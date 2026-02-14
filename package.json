@@ -5,7 +5,8 @@
   "type": "module",
   "main": "agent.js",
   "scripts": {
-    "start": "node agent.js",
+    "start": "node dashboard.js",
+    "cli": "node agent.js",
     "daily": "node agent.js --strategy daily-stats",
     "weekly": "node agent.js --strategy weekly-recap",
     "announce": "node agent.js --strategy new-api",
