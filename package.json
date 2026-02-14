@@ -1,0 +1,24 @@
+{
+  "name": "x402-community-agent",
+  "version": "1.0.0",
+  "description": "AI-powered community manager for x402 Bazaar — posts to 8+ social networks using x402 APIs (dogfooding)",
+  "type": "module",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js",
+    "daily": "node agent.js --strategy daily-stats",
+    "weekly": "node agent.js --strategy weekly-recap",
+    "announce": "node agent.js --strategy new-api",
+    "preview": "node agent.js --preview",
+    "test": "node --test tests/"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "viem": "^2.45.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "author": "Robin (Wintyx57)",
+  "license": "MIT"
+}
