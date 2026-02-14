@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import http from 'http';
 import fs from 'fs';
+import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,9 +26,14 @@ const PORT = process.env.DASHBOARD_PORT || 3500;
 const DATA_DIR = join(__dirname, 'data');
 const SETTINGS_FILE = join(DATA_DIR, 'settings.json');
 const HISTORY_FILE = join(DATA_DIR, 'history.json');
+const QUEUE_FILE = join(DATA_DIR, 'queue.json');
 
 const logs = [];
 let history = [];
+let queue = [];
+let schedulerInterval = null;
+let schedulerRunning = false;
+let lastSchedulerCheck = null;
 
 // Default settings structure
 const DEFAULT_SETTINGS = {
@@ -36,14 +42,14 @@ const DEFAULT_SETTINGS = {
     maxBudget: 0.50
   },
   platforms: {
-    telegram: { enabled: false, botToken: '', adminChatId: '', channelId: '' },
-    discord: { enabled: false, webhookUrl: '' },
-    twitter: { enabled: false, apiKey: '', apiSecret: '', accessToken: '', accessSecret: '' },
-    reddit: { enabled: false, clientId: '', clientSecret: '', username: '', password: '', subreddits: ['artificial', 'webdev', 'SideProject'] },
-    devto: { enabled: false, apiKey: '' },
-    linkedin: { enabled: false, accessToken: '' },
-    farcaster: { enabled: false, mnemonic: '' },
-    hn: { enabled: false }
+    telegram: { enabled: false, autoPublish: false, botToken: '', adminChatId: '', channelId: '' },
+    discord: { enabled: false, autoPublish: false, webhookUrl: '' },
+    twitter: { enabled: false, autoPublish: false, apiKey: '', apiSecret: '', accessToken: '', accessSecret: '' },
+    reddit: { enabled: false, autoPublish: false, clientId: '', clientSecret: '', username: '', password: '', subreddits: ['artificial', 'webdev', 'SideProject'] },
+    devto: { enabled: false, autoPublish: false, apiKey: '' },
+    linkedin: { enabled: false, autoPublish: false, accessToken: '' },
+    farcaster: { enabled: false, autoPublish: false, mnemonic: '' },
+    hn: { enabled: false, autoPublish: false }
   },
   content: {
     generateImages: true,
@@ -51,13 +57,19 @@ const DEFAULT_SETTINGS = {
     projectName: 'x402 Bazaar',
     projectUrl: 'https://x402bazaar.org'
   },
+  scheduler: {
+    enabled: false,
+    defaultTime: '09:00',
+    retryMax: 3,
+    retryDelays: [5, 30, 60]
+  },
   schedule: {
-    monday: ['weekly-recap'],
-    tuesday: ['daily-stats'],
-    wednesday: ['daily-stats'],
-    thursday: ['daily-stats'],
-    friday: ['daily-stats'],
-    saturday: ['daily-stats'],
+    monday: [{ strategy: 'weekly-recap', time: '09:00' }],
+    tuesday: [{ strategy: 'daily-stats', time: '09:00' }],
+    wednesday: [{ strategy: 'daily-stats', time: '09:00' }],
+    thursday: [{ strategy: 'daily-stats', time: '09:00' }],
+    friday: [{ strategy: 'daily-stats', time: '09:00' }],
+    saturday: [{ strategy: 'daily-stats', time: '09:00' }],
     sunday: []
   }
 };
@@ -184,6 +196,240 @@ function addLog(level, msg) {
   logs.push(entry);
   if (logs.length > 200) logs.shift();
   console.log(`[${level}] ${msg}`);
+}
+
+// ─── Queue Management ───────────────────────────────────────────
+function loadQueue() {
+  if (fs.existsSync(QUEUE_FILE)) {
+    try {
+      queue = JSON.parse(fs.readFileSync(QUEUE_FILE, 'utf-8'));
+      addLog('info', `Loaded ${queue.length} queue items`);
+    } catch (e) { addLog('error', `Failed to load queue: ${e.message}`); }
+  }
+}
+
+function saveQueue() {
+  try {
+    fs.writeFileSync(QUEUE_FILE, JSON.stringify(queue, null, 2), 'utf-8');
+  } catch (e) { addLog('error', `Failed to save queue: ${e.message}`); }
+}
+
+function createQueueItem(strategy, previewResult, platforms, autoPublish = false) {
+  return {
+    id: crypto.randomUUID(),
+    strategy,
+    contents: previewResult.contents,
+    stats: previewResult.stats,
+    imageUrl: previewResult.imageUrl || null,
+    platforms,
+    autoPublish,
+    status: autoPublish ? 'pending' : 'awaiting_approval',
+    retryCount: 0,
+    nextRetry: null,
+    createdAt: new Date().toISOString(),
+    publishedAt: null,
+    results: {},
+    error: null
+  };
+}
+
+// ─── Scheduler Engine ───────────────────────────────────────────
+function startScheduler() {
+  if (schedulerInterval) return;
+  schedulerRunning = true;
+  schedulerInterval = setInterval(schedulerTick, 60_000);
+  addLog('info', 'Scheduler demarré — vérification chaque minute');
+  schedulerTick();
+}
+
+function stopScheduler() {
+  if (schedulerInterval) clearInterval(schedulerInterval);
+  schedulerInterval = null;
+  schedulerRunning = false;
+  addLog('info', 'Scheduler arrêté');
+}
+
+function getNextScheduledPost() {
+  const settings = loadCurrentSettings();
+  const now = new Date();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+  for (let offset = 0; offset < 7; offset++) {
+    const d = new Date(now.getTime() + offset * 86400000);
+    const dayKey = dayNames[d.getDay()];
+    const entries = settings.schedule[dayKey] || [];
+
+    for (const entry of entries) {
+      const strategyName = typeof entry === 'string' ? entry : entry.strategy;
+      const time = typeof entry === 'string' ? (settings.scheduler?.defaultTime || '09:00') : entry.time;
+      const [h, m] = time.split(':').map(Number);
+
+      const scheduled = new Date(d);
+      scheduled.setHours(h, m, 0, 0);
+
+      if (scheduled > now) {
+        return { strategy: strategyName, time: scheduled.toISOString(), day: dayKey, hour: time };
+      }
+    }
+  }
+  return null;
+}
+
+function loadCurrentSettings() {
+  if (fs.existsSync(SETTINGS_FILE)) {
+    try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8')); } catch {}
+  }
+  return DEFAULT_SETTINGS;
+}
+
+async function schedulerTick() {
+  const now = new Date();
+  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const day = dayNames[now.getDay()];
+  const todayStr = now.toISOString().slice(0, 10);
+  lastSchedulerCheck = now.toISOString();
+
+  const settings = loadCurrentSettings();
+  const daySchedule = settings.schedule[day] || [];
+
+  for (const entry of daySchedule) {
+    const strategyName = typeof entry === 'string' ? entry : entry.strategy;
+    const scheduledTime = typeof entry === 'string' ? (settings.scheduler?.defaultTime || '09:00') : entry.time;
+
+    if (time === scheduledTime) {
+      const alreadyDone = queue.some(q =>
+        q.strategy === strategyName && q.createdAt.startsWith(todayStr)
+      );
+      if (alreadyDone) continue;
+
+      addLog('info', `Scheduler: exécution ${strategyName} (${time})`);
+      await executeScheduledStrategy(strategyName, settings);
+    }
+  }
+
+  await processRetryQueue(settings);
+}
+
+async function executeScheduledStrategy(strategyName, settings) {
+  try {
+    const mod = await import(`./strategies/${strategyName}.js`);
+    const result = await mod.execute({});
+
+    const autoPlatforms = [];
+    const manualPlatforms = [];
+
+    for (const [name, cfg] of Object.entries(settings.platforms)) {
+      if (!cfg.enabled) continue;
+      if (cfg.autoPublish) {
+        autoPlatforms.push(name);
+      } else {
+        manualPlatforms.push(name);
+      }
+    }
+
+    if (autoPlatforms.length > 0) {
+      const item = createQueueItem(strategyName, result, autoPlatforms, true);
+      queue.push(item);
+      saveQueue();
+      addLog('info', `Auto-publish: ${autoPlatforms.join(', ')}`);
+      await publishQueueItem(item);
+    }
+
+    if (manualPlatforms.length > 0) {
+      const item = createQueueItem(strategyName, result, manualPlatforms, false);
+      queue.push(item);
+      saveQueue();
+      addLog('info', `En attente d'approbation: ${manualPlatforms.join(', ')}`);
+      await sendPreview(result.contents).catch(() => {});
+    }
+
+    if (autoPlatforms.length === 0 && manualPlatforms.length === 0) {
+      addLog('info', 'Aucune plateforme activée — contenu généré sans publication');
+    }
+  } catch (e) {
+    addLog('error', `Strategy ${strategyName} échouée: ${e.message}`);
+  }
+}
+
+async function publishQueueItem(item) {
+  item.status = 'publishing';
+  saveQueue();
+
+  for (const platform of item.platforms) {
+    const content = item.contents[platform];
+    if (!content) continue;
+    try {
+      let result;
+      switch (platform) {
+        case 'discord':
+          result = await discord.post(content); break;
+        case 'telegram':
+          result = await postToChannel(content.text || content, content.imageUrl || item.imageUrl)
+            .then(r => ({ success: !!r?.ok, message: r?.ok ? 'Publié' : 'Échec' })); break;
+        case 'twitter':
+          result = await twitter.post(typeof content === 'string' ? content : content.text || JSON.stringify(content), item.imageUrl); break;
+        case 'reddit':
+          result = await reddit.post(content); break;
+        case 'linkedin':
+          result = await linkedin.post(typeof content === 'string' ? content : content.text || JSON.stringify(content)); break;
+        case 'devto':
+          result = await devto.post(content); break;
+        case 'farcaster':
+          result = await farcaster.post(typeof content === 'string' ? content : content.text || JSON.stringify(content)); break;
+        default:
+          result = { success: false, message: 'Plateforme inconnue' };
+      }
+      item.results[platform] = result;
+      addLog('info', `${platform}: ${result?.success ? 'OK' : result?.message || 'Échec'}`);
+    } catch (e) {
+      item.results[platform] = { success: false, message: e.message };
+      addLog('error', `${platform}: ${e.message}`);
+    }
+  }
+
+  const allOk = Object.values(item.results).every(r => r.success);
+  const anyOk = Object.values(item.results).some(r => r.success);
+
+  if (allOk) {
+    item.status = 'published';
+    item.publishedAt = new Date().toISOString();
+  } else if (anyOk) {
+    item.status = 'partial';
+    item.publishedAt = new Date().toISOString();
+  } else {
+    item.status = 'failed';
+    const settings = loadCurrentSettings();
+    const maxRetries = settings.scheduler?.retryMax || 3;
+    if (item.retryCount < maxRetries) {
+      item.status = 'retry';
+      const delays = settings.scheduler?.retryDelays || [5, 30, 60];
+      const delayMin = delays[Math.min(item.retryCount, delays.length - 1)];
+      item.nextRetry = new Date(Date.now() + delayMin * 60000).toISOString();
+      item.retryCount++;
+      addLog('info', `Retry planifié dans ${delayMin}min (tentative ${item.retryCount}/${maxRetries})`);
+    }
+  }
+
+  history.push({ time: new Date().toISOString(), strategy: item.strategy, results: item.results, auto: item.autoPublish });
+  saveHistory();
+  saveQueue();
+  await sendReport(item.results).catch(() => {});
+}
+
+async function processRetryQueue(settings) {
+  const now = Date.now();
+  const retryItems = queue.filter(q => q.status === 'retry' && q.nextRetry && new Date(q.nextRetry).getTime() <= now);
+
+  for (const item of retryItems) {
+    addLog('info', `Retry: ${item.strategy} (tentative ${item.retryCount})`);
+    const failedPlatforms = Object.entries(item.results)
+      .filter(([_, r]) => !r.success)
+      .map(([p]) => p);
+    item.platforms = failedPlatforms;
+    item.results = {};
+    await publishQueueItem(item);
+  }
 }
 
 // ─── Settings Merge (preserve redacted values) ──────────────────
@@ -347,6 +593,9 @@ async function handleApi(req, res) {
       walletConfigured: !!process.env.AGENT_PRIVATE_KEY,
       logsCount: logs.length,
       historyCount: history.length,
+      scheduler: { running: schedulerRunning, lastCheck: lastSchedulerCheck },
+      queueLength: queue.length,
+      pendingApproval: queue.filter(q => q.status === 'awaiting_approval').length,
     });
   }
 
@@ -529,6 +778,131 @@ async function handleApi(req, res) {
     } catch (e) { return json(res, { error: e.message }, 500); }
   }
 
+  // ─── Scheduler Routes ─────────────────────────────────────────
+  // GET /api/scheduler — status
+  if (path === '/api/scheduler' && req.method === 'GET') {
+    return json(res, {
+      running: schedulerRunning,
+      lastCheck: lastSchedulerCheck,
+      nextPost: getNextScheduledPost(),
+      queueLength: queue.length,
+      pendingApproval: queue.filter(q => q.status === 'awaiting_approval').length,
+      retryCount: queue.filter(q => q.status === 'retry').length,
+    });
+  }
+
+  // POST /api/scheduler/start
+  if (path === '/api/scheduler/start' && req.method === 'POST') {
+    startScheduler();
+    const settings = loadCurrentSettings();
+    settings.scheduler = settings.scheduler || {};
+    settings.scheduler.enabled = true;
+    saveSettings(settings);
+    return json(res, { success: true, running: true });
+  }
+
+  // POST /api/scheduler/stop
+  if (path === '/api/scheduler/stop' && req.method === 'POST') {
+    stopScheduler();
+    const settings = loadCurrentSettings();
+    settings.scheduler = settings.scheduler || {};
+    settings.scheduler.enabled = false;
+    saveSettings(settings);
+    return json(res, { success: true, running: false });
+  }
+
+  // POST /api/scheduler/run-now — execute a strategy immediately
+  if (path === '/api/scheduler/run-now' && req.method === 'POST') {
+    const body = await readBody(req);
+    const strategy = body.strategy || 'daily-stats';
+    addLog('info', `Exécution manuelle: ${strategy}`);
+    const settings = loadCurrentSettings();
+    await executeScheduledStrategy(strategy, settings);
+    return json(res, { success: true, queueLength: queue.length });
+  }
+
+  // ─── Queue Routes ───────────────────────────────────────────────
+  // GET /api/queue
+  if (path === '/api/queue' && req.method === 'GET') {
+    return json(res, queue.slice(-50).reverse());
+  }
+
+  // POST /api/queue/:id/approve
+  if (path.match(/^\/api\/queue\/[^/]+\/approve$/) && req.method === 'POST') {
+    const id = path.split('/')[3];
+    const item = queue.find(q => q.id === id);
+    if (!item) return json(res, { error: 'Item not found' }, 404);
+    if (item.status !== 'awaiting_approval') return json(res, { error: 'Item not awaiting approval' }, 400);
+    addLog('info', `Queue approuvé: ${item.strategy} → ${item.platforms.join(', ')}`);
+    await publishQueueItem(item);
+    return json(res, { success: true, status: item.status });
+  }
+
+  // POST /api/queue/:id/retry
+  if (path.match(/^\/api\/queue\/[^/]+\/retry$/) && req.method === 'POST') {
+    const id = path.split('/')[3];
+    const item = queue.find(q => q.id === id);
+    if (!item) return json(res, { error: 'Item not found' }, 404);
+    item.retryCount = 0;
+    item.status = 'retry';
+    item.nextRetry = new Date().toISOString();
+    saveQueue();
+    addLog('info', `Retry forcé: ${item.strategy}`);
+    return json(res, { success: true });
+  }
+
+  // DELETE /api/queue/:id
+  if (path.match(/^\/api\/queue\/[^/]+$/) && req.method === 'DELETE') {
+    const id = path.split('/')[3];
+    const idx = queue.findIndex(q => q.id === id);
+    if (idx === -1) return json(res, { error: 'Item not found' }, 404);
+    queue.splice(idx, 1);
+    saveQueue();
+    addLog('info', `Queue supprimé: ${id}`);
+    return json(res, { success: true });
+  }
+
+  // ─── Webhook Routes ─────────────────────────────────────────────
+  // POST /api/webhook/new-api — triggered when new API registered on x402
+  if (path === '/api/webhook/new-api' && req.method === 'POST') {
+    const body = await readBody(req);
+    const { apiName, apiDescription, apiPrice } = body;
+    if (!apiName) return json(res, { error: 'apiName required' }, 400);
+
+    addLog('info', `Webhook: nouvelle API "${apiName}"`);
+    const settings = loadCurrentSettings();
+    try {
+      const mod = await import('./strategies/new-api.js');
+      const result = await mod.execute({ apiName, apiDescription: apiDescription || '', apiPrice: apiPrice || '0.001 USDC' });
+
+      const autoPlatforms = [];
+      const manualPlatforms = [];
+      for (const [name, cfg] of Object.entries(settings.platforms)) {
+        if (!cfg.enabled) continue;
+        if (cfg.autoPublish) autoPlatforms.push(name);
+        else manualPlatforms.push(name);
+      }
+
+      if (autoPlatforms.length > 0) {
+        const item = createQueueItem('new-api', result, autoPlatforms, true);
+        queue.push(item);
+        saveQueue();
+        await publishQueueItem(item);
+      }
+      if (manualPlatforms.length > 0) {
+        const item = createQueueItem('new-api', result, manualPlatforms, false);
+        queue.push(item);
+        saveQueue();
+        await sendPreview(result.contents).catch(() => {});
+      }
+
+      return json(res, { success: true, message: `Annonce "${apiName}" créée`, queueLength: queue.length });
+    } catch (e) {
+      addLog('error', `Webhook new-api failed: ${e.message}`);
+      return json(res, { error: e.message }, 500);
+    }
+  }
+
   // GET /api/logs
   if (path === '/api/logs' && req.method === 'GET') {
     return json(res, logs.slice(-50));
@@ -599,11 +973,18 @@ const server = http.createServer(async (req, res) => {
 
 // Initialize on startup
 ensureDataDir();
-loadSettings();
+const currentSettings = loadSettings();
 loadHistory();
+loadQueue();
 
 server.listen(PORT, () => {
   console.log(`\n  x402 Community Agent Dashboard`);
   console.log(`  http://localhost:${PORT}\n`);
-  addLog('info', 'Dashboard started');
+  addLog('info', 'Dashboard démarré');
+
+  // Auto-start scheduler if enabled in settings
+  const settings = loadCurrentSettings();
+  if (settings.scheduler?.enabled) {
+    startScheduler();
+  }
 });

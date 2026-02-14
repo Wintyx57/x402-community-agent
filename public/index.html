@@ -15,6 +15,7 @@
       --red: #ef4444; --red-dim: rgba(239,68,68,0.12);
       --blue: #3b82f6; --blue-dim: rgba(59,130,246,0.12);
       --purple: #a855f7; --purple-dim: rgba(168,85,247,0.12);
+      --yellow: #eab308; --yellow-dim: rgba(234,179,8,0.12);
       --radius: 12px; --radius-sm: 8px;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -35,6 +36,7 @@
     .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
     .nav-item.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(255,153,0,0.2); }
     .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .nav-badge { background: var(--accent); color: #000; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 8px; margin-left: auto; }
     .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
     .sidebar-footer .budget { font-size: 12px; color: var(--text3); }
     .sidebar-footer .budget-val { font-size: 18px; font-weight: 700; color: var(--green); margin-top: 2px; }
@@ -89,7 +91,9 @@
     .btn-green { background: var(--green); color: #000; }
     .btn-green:hover:not(:disabled) { box-shadow: 0 4px 16px rgba(34,197,94,0.3); }
     .btn-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+    .btn-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
     .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-xs { padding: 4px 10px; font-size: 11px; }
     .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
 
     /* ─── Strategy Pills ─── */
@@ -138,6 +142,7 @@
     .schedule-day { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 8px; text-align: center; }
     .schedule-day .day-name { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; margin-bottom: 8px; }
     .schedule-tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 4px; margin: 2px; background: var(--accent-dim); color: var(--accent); cursor: pointer; }
+    .schedule-tag .tag-time { font-size: 9px; color: var(--text3); display: block; }
     .schedule-tag.empty { background: transparent; color: var(--text3); border: 1px dashed var(--border); }
 
     /* ─── Logs ─── */
@@ -158,6 +163,37 @@
     .badge-ok { background: var(--green-dim); color: var(--green); }
     .badge-fail { background: var(--red-dim); color: var(--red); }
     .badge-manual { background: var(--blue-dim); color: var(--blue); }
+    .badge-auto { background: var(--purple-dim); color: var(--purple); }
+    .badge-pending { background: var(--yellow-dim); color: var(--yellow); }
+    .badge-retry { background: var(--accent-dim); color: var(--accent); }
+
+    /* ─── Queue ─── */
+    .queue-item { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 10px; transition: all 0.2s; }
+    .queue-item:hover { border-color: var(--border2); }
+    .queue-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .queue-strategy { font-size: 14px; font-weight: 600; }
+    .queue-status { font-size: 11px; padding: 3px 10px; border-radius: 4px; font-weight: 600; }
+    .queue-status.awaiting_approval { background: var(--yellow-dim); color: var(--yellow); }
+    .queue-status.pending { background: var(--blue-dim); color: var(--blue); }
+    .queue-status.publishing { background: var(--accent-dim); color: var(--accent); }
+    .queue-status.published { background: var(--green-dim); color: var(--green); }
+    .queue-status.partial { background: var(--purple-dim); color: var(--purple); }
+    .queue-status.failed { background: var(--red-dim); color: var(--red); }
+    .queue-status.retry { background: var(--accent-dim); color: var(--accent); }
+    .queue-meta { font-size: 12px; color: var(--text3); margin-bottom: 10px; }
+    .queue-platforms { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .queue-actions { display: flex; gap: 8px; }
+
+    /* ─── Scheduler Banner ─── */
+    .scheduler-banner { background: linear-gradient(135deg, rgba(255,153,0,0.08), rgba(168,85,247,0.08)); border: 1px solid rgba(255,153,0,0.2); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .scheduler-info { flex: 1; }
+    .scheduler-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    .scheduler-title .pulse { width: 10px; height: 10px; border-radius: 50%; }
+    .scheduler-title .pulse.on { background: var(--green); box-shadow: 0 0 12px var(--green); animation: pulse 2s infinite; }
+    .scheduler-title .pulse.off { background: var(--text3); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .scheduler-detail { font-size: 12px; color: var(--text2); margin-top: 6px; }
+    .scheduler-next { font-size: 12px; color: var(--accent); margin-top: 4px; font-weight: 500; }
 
     /* ─── Spinner ─── */
     .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
@@ -176,18 +212,15 @@
       .form-row { grid-template-columns: 1fr; }
       .schedule-grid { grid-template-columns: repeat(4, 1fr); }
       .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .scheduler-banner { flex-direction: column; text-align: center; }
     }
 
-    /* ─── Image preview ─── */
     .img-preview { text-align: center; margin-top: 16px; }
     .img-preview img { max-width: 320px; border-radius: var(--radius-sm); border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-
-    /* ─── Empty state ─── */
     .empty { text-align: center; padding: 40px 20px; color: var(--text3); }
     .empty svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.3; }
     .empty p { font-size: 13px; }
 
-    /* ─── Toast ─── */
     .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; z-index: 999; animation: toastIn 0.3s; display: none; }
     .toast.show { display: flex; align-items: center; gap: 8px; }
     .toast.ok { background: var(--green); color: #000; }
@@ -207,6 +240,11 @@
     <div class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Tableau de bord
+    </div>
+    <div class="nav-item" data-page="automation" onclick="navigateTo('automation')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      Automatisation
+      <span class="nav-badge" id="nav-queue-badge" style="display:none">0</span>
     </div>
     <div class="nav-item" data-page="studio" onclick="navigateTo('studio')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -249,11 +287,20 @@
 
   <!-- ========== PAGE: Dashboard ========== -->
   <div class="page active" id="page-dashboard">
+    <!-- Scheduler Banner -->
+    <div class="scheduler-banner" id="dash-scheduler">
+      <div class="scheduler-info">
+        <div class="scheduler-title"><span class="pulse off" id="dash-sched-pulse"></span> Scheduler <span id="dash-sched-label" style="font-weight:400;font-size:12px;color:var(--text3)">inactif</span></div>
+        <div class="scheduler-next" id="dash-sched-next"></div>
+      </div>
+      <button class="btn btn-accent btn-sm" id="dash-sched-btn" onclick="toggleScheduler()">Activer</button>
+    </div>
+
     <div class="grid-4" id="stats-grid" style="margin-bottom:24px">
       <div class="stat-card"><div class="val" id="s-apis">--</div><div class="lbl">APIs actives</div></div>
       <div class="stat-card"><div class="val" id="s-uptime">--</div><div class="lbl">Disponibilite</div></div>
       <div class="stat-card"><div class="val" id="s-payments">--</div><div class="lbl">Paiements</div></div>
-      <div class="stat-card"><div class="val" id="s-integrations">--</div><div class="lbl">Integrations</div></div>
+      <div class="stat-card"><div class="val" id="s-queue">0</div><div class="lbl">File d'attente</div></div>
     </div>
 
     <div class="grid-2">
@@ -275,6 +322,69 @@
     </div>
   </div>
 
+  <!-- ========== PAGE: Automation ========== -->
+  <div class="page" id="page-automation">
+    <!-- Scheduler Controls -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Moteur d'automatisation</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="pulse off" id="auto-sched-pulse" style="width:8px;height:8px;border-radius:50%;display:inline-block"></span>
+          <span id="auto-sched-status" style="font-size:12px;color:var(--text3)">Inactif</span>
+        </div>
+      </div>
+      <div class="grid-3" style="margin-bottom:20px">
+        <div class="stat-card">
+          <div class="val" id="auto-next-time">--</div>
+          <div class="lbl">Prochain post</div>
+        </div>
+        <div class="stat-card">
+          <div class="val" id="auto-queue-count">0</div>
+          <div class="lbl">En file d'attente</div>
+        </div>
+        <div class="stat-card">
+          <div class="val" id="auto-pending-count">0</div>
+          <div class="lbl">En attente d'approbation</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green" id="auto-start-btn" onclick="toggleScheduler()">Demarrer le scheduler</button>
+        <button class="btn btn-accent" onclick="runNow()">Executer maintenant</button>
+        <select class="form-input" id="run-now-strategy" style="width:180px;padding:8px 12px">
+          <option value="daily-stats">Stats du jour</option>
+          <option value="weekly-recap">Recap hebdo</option>
+          <option value="new-api">Nouvelle API</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Webhook Info -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Webhook — Nouvelle API</span></div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Quand une nouvelle API est enregistree sur x402 Bazaar, envoyez un POST pour declencher automatiquement une annonce.</p>
+      <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-family:'Consolas',monospace;font-size:12px;color:var(--accent)">
+        POST /api/webhook/new-api<br>
+        Content-Type: application/json<br><br>
+        {<br>
+        &nbsp;&nbsp;"apiName": "Weather API",<br>
+        &nbsp;&nbsp;"apiDescription": "Real-time weather data",<br>
+        &nbsp;&nbsp;"apiPrice": "0.001 USDC"<br>
+        }
+      </div>
+    </div>
+
+    <!-- Queue -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">File d'attente</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadQueue()">Rafraichir</button>
+      </div>
+      <div id="queue-list">
+        <div class="empty"><p>Aucun element en file d'attente</p></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== PAGE: Studio ========== -->
   <div class="page" id="page-studio">
     <div class="card">
@@ -290,7 +400,6 @@
         <button class="btn btn-green" id="btn-pub" onclick="doPublish()" disabled>Publier</button>
       </div>
     </div>
-
     <div id="studio-preview" style="display:none">
       <div class="card">
         <div class="card-header"><span class="card-title">Apercu par plateforme</span></div>
@@ -304,7 +413,6 @@
 
   <!-- ========== PAGE: Settings ========== -->
   <div class="page" id="page-settings">
-    <!-- Wallet -->
     <div class="card">
       <div class="card-header"><span class="card-title">Portefeuille Agent</span></div>
       <div class="form-row">
@@ -320,8 +428,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Content -->
     <div class="card">
       <div class="card-header"><span class="card-title">Contenu</span></div>
       <div class="form-row">
@@ -348,19 +454,30 @@
         </div>
       </div>
     </div>
-
-    <!-- Platforms -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Scheduler</span></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Heure par defaut</label>
+          <input class="form-input" type="time" id="set-default-time" value="09:00">
+          <div class="form-hint">Heure de publication par defaut</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tentatives max (retry)</label>
+          <input class="form-input" type="number" id="set-retry-max" value="3" min="0" max="10">
+          <div class="form-hint">Nombre max de tentatives en cas d'echec</div>
+        </div>
+      </div>
+    </div>
     <div class="card">
       <div class="card-header"><span class="card-title">Plateformes</span></div>
       <div id="settings-platforms"></div>
     </div>
-
-    <!-- Schedule -->
     <div class="card">
       <div class="card-header"><span class="card-title">Calendrier editorial</span></div>
       <div class="schedule-grid" id="schedule-grid"></div>
+      <div class="form-hint" style="margin-top:10px">Cliquez sur une case pour modifier le planning. Le format est {strategie}@{heure}.</div>
     </div>
-
     <div class="btn-row" style="margin-top:8px">
       <button class="btn btn-accent" onclick="saveAllSettings()">Sauvegarder la configuration</button>
       <button class="btn btn-ghost" onclick="loadAllSettings()">Reinitialiser</button>
@@ -391,49 +508,50 @@
   </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
 const PLATFORMS = {
-  telegram: { label: 'Telegram', icon: '✈', color: '#0088cc', fields: [
+  telegram: { label: 'Telegram', icon: '&#9992;', color: '#0088cc', fields: [
     { key: 'botToken', label: 'Token du bot', type: 'password', hint: 'Token de @BotFather' },
     { key: 'adminChatId', label: 'Chat ID admin', hint: 'Votre chat ID personnel' },
     { key: 'channelId', label: 'ID du channel public', hint: 'Ex: @x402_updates' },
   ]},
-  discord: { label: 'Discord', icon: '🎮', color: '#5865f2', fields: [
-    { key: 'webhookUrl', label: 'URL du webhook', type: 'password', hint: 'Parametres du serveur > Integrations > Webhooks' },
+  discord: { label: 'Discord', icon: '&#127918;', color: '#5865f2', fields: [
+    { key: 'webhookUrl', label: 'URL du webhook', type: 'password', hint: 'Parametres > Integrations > Webhooks' },
   ]},
-  twitter: { label: 'Twitter / X', icon: '𝕏', color: '#1da1f2', fields: [
+  twitter: { label: 'Twitter / X', icon: '&#120143;', color: '#1da1f2', fields: [
     { key: 'apiKey', label: 'API Key', type: 'password' },
     { key: 'apiSecret', label: 'API Secret', type: 'password' },
     { key: 'accessToken', label: 'Access Token', type: 'password' },
     { key: 'accessSecret', label: 'Access Secret', type: 'password' },
   ]},
-  reddit: { label: 'Reddit', icon: '🤖', color: '#ff4500', fields: [
+  reddit: { label: 'Reddit', icon: '&#129302;', color: '#ff4500', fields: [
     { key: 'clientId', label: 'Client ID' },
     { key: 'clientSecret', label: 'Client Secret', type: 'password' },
     { key: 'username', label: "Nom d'utilisateur" },
     { key: 'password', label: 'Mot de passe', type: 'password' },
   ]},
-  devto: { label: 'Dev.to', icon: '📝', color: '#0a0a0a', fields: [
+  devto: { label: 'Dev.to', icon: '&#128221;', color: '#0a0a0a', fields: [
     { key: 'apiKey', label: 'Cle API', type: 'password', hint: 'dev.to/settings/extensions' },
   ]},
-  linkedin: { label: 'LinkedIn', icon: '💼', color: '#0077b5', fields: [
+  linkedin: { label: 'LinkedIn', icon: '&#128188;', color: '#0077b5', fields: [
     { key: 'accessToken', label: "Token d'acces OAuth2", type: 'password' },
   ]},
-  farcaster: { label: 'Farcaster', icon: '🟣', color: '#8b5cf6', fields: [
+  farcaster: { label: 'Farcaster', icon: '&#128995;', color: '#8b5cf6', fields: [
     { key: 'mnemonic', label: 'Mnemonique', type: 'password', hint: '12 ou 24 mots' },
   ]},
-  hn: { label: 'Hacker News', icon: '🟠', color: '#ff6600', fields: [] },
+  hn: { label: 'Hacker News', icon: '&#128992;', color: '#ff6600', fields: [] },
 };
 const STRATEGY_LABELS = { 'daily-stats': 'Stats du jour', 'weekly-recap': 'Recap hebdo', 'new-api': 'Nouvelle API' };
 const DAYS = { monday: 'Lun', tuesday: 'Mar', wednesday: 'Mer', thursday: 'Jeu', friday: 'Ven', saturday: 'Sam', sunday: 'Dim' };
+const STATUS_LABELS = { awaiting_approval: 'En attente', pending: 'En attente', publishing: 'Publication...', published: 'Publie', partial: 'Partiel', failed: 'Echoue', retry: 'Retry' };
 
 let currentPage = 'dashboard';
 let currentStrategy = 'daily-stats';
 let previewData = null;
 let settingsCache = null;
+let schedulerData = null;
 
 // ─── Navigation ──────────────────────────────────────────────────
 function navigateTo(page) {
@@ -441,12 +559,13 @@ function navigateTo(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === page));
-  const titles = { dashboard: 'Tableau de bord', studio: 'Studio de contenu', settings: 'Configuration', history: 'Historique', logs: 'Journaux' };
+  const titles = { dashboard: 'Tableau de bord', automation: 'Automatisation', studio: 'Studio de contenu', settings: 'Configuration', history: 'Historique', logs: 'Journaux' };
   document.getElementById('page-title').textContent = titles[page] || page;
   document.getElementById('sidebar').classList.remove('open');
   if (page === 'settings' && !settingsCache) loadAllSettings();
   if (page === 'history') loadHistory();
   if (page === 'logs') loadLogs();
+  if (page === 'automation') { loadSchedulerStatus(); loadQueue(); }
 }
 
 // ─── API ─────────────────────────────────────────────────────────
@@ -456,7 +575,6 @@ async function api(url, opts = {}) {
   return res.json();
 }
 
-// ─── Toast ───────────────────────────────────────────────────────
 function toast(msg, type = 'ok') {
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -464,9 +582,27 @@ function toast(msg, type = 'ok') {
   setTimeout(() => el.className = 'toast', 3000);
 }
 
+function formatTime(iso) {
+  if (!iso) return '--';
+  const d = new Date(iso);
+  return d.toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatCountdown(iso) {
+  if (!iso) return '--';
+  const diff = new Date(iso) - Date.now();
+  if (diff < 0) return 'Imminent';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  if (h > 24) return `${Math.floor(h / 24)}j ${h % 24}h`;
+  if (h > 0) return `${h}h ${m}min`;
+  return `${m}min`;
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────
 async function loadDashboard() {
-  const [status, stats] = await Promise.all([api('/api/status'), api('/api/stats')]);
+  const [status, stats, sched] = await Promise.all([api('/api/status'), api('/api/stats'), api('/api/scheduler')]);
+  schedulerData = sched;
 
   document.getElementById('t-apis').textContent = stats.totalServices || 0;
   document.getElementById('t-uptime').textContent = `${stats.uptimePercent || 0}%`;
@@ -474,8 +610,23 @@ async function loadDashboard() {
   document.getElementById('s-apis').textContent = stats.totalServices || 0;
   document.getElementById('s-uptime').textContent = `${stats.uptimePercent || 0}%`;
   document.getElementById('s-payments').textContent = stats.totalPayments || 0;
-  document.getElementById('s-integrations').textContent = stats.integrations || 0;
+  document.getElementById('s-queue').textContent = status.queueLength || 0;
   document.getElementById('sidebar-budget').textContent = `${status.budget.remaining.toFixed(2)} USDC`;
+
+  // Scheduler banner
+  const running = sched.running;
+  document.getElementById('dash-sched-pulse').className = `pulse ${running ? 'on' : 'off'}`;
+  document.getElementById('dash-sched-label').textContent = running ? 'actif' : 'inactif';
+  document.getElementById('dash-sched-btn').textContent = running ? 'Arreter' : 'Activer';
+  document.getElementById('dash-sched-btn').className = `btn btn-sm ${running ? 'btn-red' : 'btn-green'}`;
+  const next = sched.nextPost;
+  document.getElementById('dash-sched-next').textContent = next ? `Prochain post: ${STRATEGY_LABELS[next.strategy] || next.strategy} dans ${formatCountdown(next.time)} (${next.hour})` : 'Aucun post planifie';
+
+  // Queue badge
+  const pending = sched.pendingApproval || 0;
+  const badge = document.getElementById('nav-queue-badge');
+  if (pending > 0) { badge.textContent = pending; badge.style.display = 'inline'; }
+  else { badge.style.display = 'none'; }
 
   // Platforms
   const el = document.getElementById('dash-platforms');
@@ -511,6 +662,128 @@ async function loadDashLogs() {
   } catch {}
 }
 
+// ─── Scheduler Controls ──────────────────────────────────────────
+async function toggleScheduler() {
+  try {
+    const sched = schedulerData || await api('/api/scheduler');
+    if (sched.running) {
+      await api('/api/scheduler/stop', { method: 'POST' });
+      toast('Scheduler arrete');
+    } else {
+      await api('/api/scheduler/start', { method: 'POST' });
+      toast('Scheduler demarre');
+    }
+    loadDashboard();
+    if (currentPage === 'automation') loadSchedulerStatus();
+  } catch (e) { toast('Erreur: ' + e.message, 'fail'); }
+}
+
+async function loadSchedulerStatus() {
+  try {
+    const sched = await api('/api/scheduler');
+    schedulerData = sched;
+    const running = sched.running;
+
+    document.getElementById('auto-sched-pulse').className = `pulse ${running ? 'on' : 'off'}`;
+    document.getElementById('auto-sched-status').textContent = running ? 'Actif' : 'Inactif';
+    document.getElementById('auto-sched-status').style.color = running ? 'var(--green)' : 'var(--text3)';
+    document.getElementById('auto-start-btn').textContent = running ? 'Arreter le scheduler' : 'Demarrer le scheduler';
+    document.getElementById('auto-start-btn').className = `btn ${running ? 'btn-red' : 'btn-green'}`;
+
+    document.getElementById('auto-next-time').textContent = sched.nextPost ? formatCountdown(sched.nextPost.time) : '--';
+    document.getElementById('auto-queue-count').textContent = sched.queueLength;
+    document.getElementById('auto-pending-count').textContent = sched.pendingApproval;
+  } catch {}
+}
+
+async function runNow() {
+  const strategy = document.getElementById('run-now-strategy').value;
+  try {
+    toast('Execution en cours...', 'ok');
+    await api('/api/scheduler/run-now', { method: 'POST', body: JSON.stringify({ strategy }) });
+    toast(`${STRATEGY_LABELS[strategy]} execute`);
+    loadQueue();
+    loadSchedulerStatus();
+  } catch (e) { toast('Erreur: ' + e.message, 'fail'); }
+}
+
+// ─── Queue ────────────────────────────────────────────────────────
+async function loadQueue() {
+  try {
+    const items = await api('/api/queue');
+    const el = document.getElementById('queue-list');
+    if (items.length === 0) {
+      el.innerHTML = '<div class="empty"><p>Aucun element en file d\'attente</p></div>';
+      return;
+    }
+    el.innerHTML = items.map(q => {
+      const platformBadges = q.platforms.map(p =>
+        `<span class="badge ${q.results[p]?.success ? 'badge-ok' : (q.results[p] ? 'badge-fail' : 'badge-pending')}">${PLATFORMS[p]?.icon || ''} ${PLATFORMS[p]?.label || p}</span>`
+      ).join('');
+
+      let actions = '';
+      if (q.status === 'awaiting_approval') {
+        actions = `<button class="btn btn-green btn-xs" onclick="approveQueue('${q.id}')">Approuver</button>
+          <button class="btn btn-red btn-xs" onclick="deleteQueue('${q.id}')">Rejeter</button>`;
+      } else if (q.status === 'failed') {
+        actions = `<button class="btn btn-accent btn-xs" onclick="retryQueue('${q.id}')">Retenter</button>
+          <button class="btn btn-red btn-xs" onclick="deleteQueue('${q.id}')">Supprimer</button>`;
+      } else if (q.status === 'retry') {
+        const nextRetry = q.nextRetry ? `Retry dans ${formatCountdown(q.nextRetry)}` : '';
+        actions = `<span style="font-size:11px;color:var(--accent)">${nextRetry}</span>
+          <button class="btn btn-red btn-xs" onclick="deleteQueue('${q.id}')">Annuler</button>`;
+      } else if (q.status === 'published' || q.status === 'partial') {
+        actions = `<button class="btn btn-ghost btn-xs" onclick="deleteQueue('${q.id}')">Archiver</button>`;
+      }
+
+      return `<div class="queue-item">
+        <div class="queue-header">
+          <div>
+            <span class="queue-strategy">${STRATEGY_LABELS[q.strategy] || q.strategy}</span>
+            ${q.autoPublish ? '<span class="badge badge-auto" style="margin-left:8px">Auto</span>' : '<span class="badge badge-pending" style="margin-left:8px">Manuel</span>'}
+          </div>
+          <span class="queue-status ${q.status}">${STATUS_LABELS[q.status] || q.status}</span>
+        </div>
+        <div class="queue-meta">
+          Cree: ${new Date(q.createdAt).toLocaleString('fr-FR')}
+          ${q.publishedAt ? ` | Publie: ${new Date(q.publishedAt).toLocaleString('fr-FR')}` : ''}
+          ${q.retryCount > 0 ? ` | Tentatives: ${q.retryCount}` : ''}
+        </div>
+        <div class="queue-platforms">${platformBadges}</div>
+        <div class="queue-actions">${actions}</div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('queue-list').innerHTML = '<div class="empty"><p>Erreur de chargement</p></div>';
+  }
+}
+
+async function approveQueue(id) {
+  try {
+    await api(`/api/queue/${id}/approve`, { method: 'POST' });
+    toast('Publication approuvee');
+    loadQueue();
+    loadSchedulerStatus();
+  } catch (e) { toast('Erreur: ' + e.message, 'fail'); }
+}
+
+async function retryQueue(id) {
+  try {
+    await api(`/api/queue/${id}/retry`, { method: 'POST' });
+    toast('Retry lance');
+    loadQueue();
+  } catch (e) { toast('Erreur: ' + e.message, 'fail'); }
+}
+
+async function deleteQueue(id) {
+  try {
+    await api(`/api/queue/${id}`, { method: 'DELETE' });
+    toast('Element supprime');
+    loadQueue();
+    loadSchedulerStatus();
+  } catch (e) { toast('Erreur: ' + e.message, 'fail'); }
+}
+
 // ─── Studio ──────────────────────────────────────────────────────
 document.getElementById('pills').addEventListener('click', e => {
   if (!e.target.dataset.s) return;
@@ -536,16 +809,13 @@ async function doGenerate() {
 function renderPreview() {
   if (!previewData) return;
   const platforms = Object.keys(previewData.contents);
-  // Tabs
   document.getElementById('prev-tabs').innerHTML = platforms.map((p, i) =>
     `<button class="tab ${i === 0 ? 'active' : ''}" onclick="showTab('${p}')">${(PLATFORMS[p]?.icon || '') + ' ' + (PLATFORMS[p]?.label || p)}</button>`
   ).join('');
-  // Checks
   document.getElementById('pub-checks').innerHTML = platforms.map(p =>
     `<label class="check-item checked" onclick="this.classList.toggle('checked')"><input type="checkbox" value="${p}" checked> ${PLATFORMS[p]?.icon || ''} ${PLATFORMS[p]?.label || p}</label>`
   ).join('');
   if (platforms.length > 0) showTab(platforms[0]);
-  // Image
   document.getElementById('prev-img').innerHTML = previewData.imageUrl ? `<img src="${previewData.imageUrl}" alt="Visuel genere">` : '';
 }
 
@@ -597,8 +867,9 @@ function renderSettings() {
   document.getElementById('set-project-name').value = s.content.projectName;
   document.getElementById('set-project-url').value = s.content.projectUrl;
   document.getElementById('set-lang').value = s.content.defaultLanguage;
-  const imgToggle = document.getElementById('set-images');
-  imgToggle.classList.toggle('on', s.content.generateImages);
+  document.getElementById('set-images').classList.toggle('on', s.content.generateImages);
+  document.getElementById('set-default-time').value = s.scheduler?.defaultTime || '09:00';
+  document.getElementById('set-retry-max').value = s.scheduler?.retryMax ?? 3;
 
   // Platforms
   const container = document.getElementById('settings-platforms');
@@ -617,7 +888,13 @@ function renderSettings() {
           <span style="font-size:20px">${p.icon}</span> ${p.label}
           <button class="test-btn" onclick="testPlatform('${key}', this)">Tester</button>
         </div>
-        <div class="toggle ${cfg.enabled ? 'on' : ''}" data-platform-toggle="${key}" onclick="this.classList.toggle('on')"></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:10px;color:var(--text3)">Auto</span>
+            <div class="toggle ${cfg.autoPublish ? 'on' : ''}" data-platform-auto="${key}" onclick="this.classList.toggle('on')" title="Publication automatique"></div>
+          </div>
+          <div class="toggle ${cfg.enabled ? 'on' : ''}" data-platform-toggle="${key}" onclick="this.classList.toggle('on')"></div>
+        </div>
       </div>
       ${fieldsHtml ? `<div class="form-row">${fieldsHtml}</div>` : '<div class="form-hint">Aucune configuration necessaire</div>'}
       <div id="test-result-${key}"></div>
@@ -625,14 +902,54 @@ function renderSettings() {
   }).join('');
 
   // Schedule
+  renderScheduleGrid();
+}
+
+function renderScheduleGrid() {
+  const s = settingsCache;
   const scheduleEl = document.getElementById('schedule-grid');
   scheduleEl.innerHTML = Object.entries(DAYS).map(([dayKey, dayLabel]) => {
     const strats = s.schedule[dayKey] || [];
+    const tags = strats.map((st, i) => {
+      const name = typeof st === 'string' ? st : st.strategy;
+      const time = typeof st === 'string' ? (s.scheduler?.defaultTime || '09:00') : st.time;
+      return `<div class="schedule-tag" onclick="editScheduleEntry('${dayKey}', ${i})" title="Cliquer pour modifier">
+        ${STRATEGY_LABELS[name] || name}<span class="tag-time">${time}</span>
+      </div>`;
+    });
     return `<div class="schedule-day">
       <div class="day-name">${dayLabel}</div>
-      ${strats.length > 0 ? strats.map(st => `<div class="schedule-tag">${STRATEGY_LABELS[st] || st}</div>`).join('') : '<div class="schedule-tag empty">Repos</div>'}
+      ${tags.length > 0 ? tags.join('') : '<div class="schedule-tag empty" onclick="addScheduleEntry(\''+dayKey+'\')">+ Ajouter</div>'}
+      ${tags.length > 0 ? '<div class="schedule-tag empty" onclick="addScheduleEntry(\''+dayKey+'\')" style="margin-top:4px">+</div>' : ''}
     </div>`;
   }).join('');
+}
+
+function editScheduleEntry(day, index) {
+  const entries = settingsCache.schedule[day] || [];
+  const entry = entries[index];
+  const name = typeof entry === 'string' ? entry : entry.strategy;
+  const time = typeof entry === 'string' ? '09:00' : entry.time;
+
+  const choice = prompt(`Modifier (ou "supprimer" pour retirer):\nStrategie: daily-stats, weekly-recap, new-api\nFormat: strategie@heure (ex: daily-stats@10:30)`, `${name}@${time}`);
+  if (choice === null) return;
+  if (choice.toLowerCase() === 'supprimer' || choice === '') {
+    entries.splice(index, 1);
+  } else {
+    const [s, t] = choice.split('@');
+    entries[index] = { strategy: s.trim(), time: t?.trim() || '09:00' };
+  }
+  settingsCache.schedule[day] = entries;
+  renderScheduleGrid();
+}
+
+function addScheduleEntry(day) {
+  const choice = prompt('Ajouter une strategie:\nFormat: strategie@heure (ex: daily-stats@09:00)', 'daily-stats@09:00');
+  if (!choice) return;
+  const [s, t] = choice.split('@');
+  if (!settingsCache.schedule[day]) settingsCache.schedule[day] = [];
+  settingsCache.schedule[day].push({ strategy: s.trim(), time: t?.trim() || '09:00' });
+  renderScheduleGrid();
 }
 
 async function testPlatform(platform, btn) {
@@ -658,24 +975,28 @@ async function saveAllSettings() {
       projectName: document.getElementById('set-project-name').value,
       projectUrl: document.getElementById('set-project-url').value,
     },
+    scheduler: {
+      enabled: schedulerData?.running || false,
+      defaultTime: document.getElementById('set-default-time').value || '09:00',
+      retryMax: parseInt(document.getElementById('set-retry-max').value) || 3,
+      retryDelays: [5, 30, 60],
+    },
     schedule: settingsCache.schedule,
   };
 
-  // Collect platform fields
   Object.keys(PLATFORMS).forEach(key => {
     const enabled = document.querySelector(`[data-platform-toggle="${key}"]`)?.classList.contains('on') || false;
+    const autoPublish = document.querySelector(`[data-platform-auto="${key}"]`)?.classList.contains('on') || false;
     const fields = {};
     document.querySelectorAll(`.platform-field[data-platform="${key}"]`).forEach(input => {
       const val = input.value.trim();
-      // Don't overwrite with redacted values
       if (val && !val.startsWith('***')) {
         fields[input.dataset.key] = val;
       } else if (settingsCache?.platforms?.[key]?.[input.dataset.key]) {
-        // Keep existing value if field shows redacted
         fields[input.dataset.key] = '___KEEP___';
       }
     });
-    settings.platforms[key] = { enabled, ...fields };
+    settings.platforms[key] = { enabled, autoPublish, ...fields };
     if (key === 'reddit') settings.platforms[key].subreddits = settingsCache?.platforms?.reddit?.subreddits || ['artificial', 'webdev', 'SideProject'];
   });
 
@@ -698,7 +1019,7 @@ async function loadHistory() {
       ).join('');
       return `<div class="history-item">
         <div class="history-meta">
-          <div class="history-time">${new Date(h.time).toLocaleString('fr-FR')}</div>
+          <div class="history-time">${new Date(h.time).toLocaleString('fr-FR')}${h.auto ? ' <span class="badge badge-auto">Auto</span>' : ''}</div>
           <div class="history-strategy">${STRATEGY_LABELS[h.strategy] || h.strategy || 'Inconnu'}</div>
         </div>
         <div class="history-badges">${badges}</div>
@@ -723,6 +1044,7 @@ async function loadLogs() {
 loadDashboard();
 setInterval(() => { if (currentPage === 'dashboard') loadDashboard(); }, 30000);
 setInterval(() => { if (currentPage === 'logs') loadLogs(); }, 10000);
+setInterval(() => { if (currentPage === 'automation') { loadSchedulerStatus(); loadQueue(); } }, 15000);
 </script>
 </body>
 </html>

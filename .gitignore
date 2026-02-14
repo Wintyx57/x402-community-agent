@@ -3,3 +3,4 @@ node_modules/
 *.log
 data/settings.json
 data/history.json
+data/queue.json
