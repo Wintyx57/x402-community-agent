@@ -1,4 +1,11 @@
 // x402 Community Agent — Configuration
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+const __cfgFilename = fileURLToPath(import.meta.url);
+const __cfgDirname = dirname(__cfgFilename);
+dotenv.config({ path: join(__cfgDirname, '.env') });
+
 export const config = {
   // x402 Bazaar API
   serverUrl: process.env.X402_SERVER_URL || 'https://x402-api.onrender.com',

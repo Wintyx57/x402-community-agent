@@ -155,10 +155,10 @@ async function main() {
 
   // Send manual post content to Telegram
   if (manualPosts.length > 0) {
-    let manualMsg = `*Manual Posts Needed*\n\n`;
+    let manualMsg = `Manual Posts Needed\n\n`;
     for (const { platform, content } of manualPosts) {
       const text = typeof content === 'string' ? content : (content.title || content.text || JSON.stringify(content));
-      manualMsg += `--- *${platform.toUpperCase()}* ---\nCopy and post manually:\n\`\`\`\n${text.slice(0, 800)}\n\`\`\`\n\n`;
+      manualMsg += `--- ${platform.toUpperCase()} ---\n${text.slice(0, 800)}\n\n`;
     }
     await sendPreview({ 'manual-posts': manualMsg });
   }

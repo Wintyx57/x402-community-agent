@@ -3,7 +3,6 @@ import {
   fetchStats, generateText, generateImage,
   adaptForTwitter, adaptForDiscord, adaptForTelegram, adaptForLinkedIn, adaptForFarcaster,
 } from '../lib/content-gen.js';
-import { callFreeApi } from '../lib/x402-client.js';
 import { config } from '../config.js';
 
 export const name = 'new-api';
@@ -18,13 +17,18 @@ export async function execute(options = {}) {
   const stats = await fetchStats();
 
   console.log(`[new-api] Announcing: ${apiName}`);
+
+  // Local fallback content
+  const localContent = `New on x402 Bazaar: ${apiName}! ${apiDescription}. Price: ${apiPrice} USDC per call. Total marketplace: ${stats.totalServices} APIs. AI agents can use this API autonomously, paying with USDC via x402 protocol. No subscriptions needed.`;
+
   const mainContent = await generateText(
     `Write an exciting announcement for a new API on x402 Bazaar marketplace. ` +
     `API name: ${apiName}. Description: ${apiDescription}. Price: ${apiPrice} USDC per call. ` +
     `Total APIs now: ${stats.totalServices}. ` +
     `Key point: AI agents can use this API autonomously, paying with USDC via the x402 protocol. ` +
     `Keep it short, professional, and exciting.`,
-    350
+    350,
+    localContent
   );
 
   let imageUrl = null;

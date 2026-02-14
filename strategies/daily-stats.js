@@ -1,6 +1,6 @@
 // Strategy: Daily Stats — Post daily platform statistics to all networks
 import {
-  fetchStats, generateText, generateImage, translateText,
+  fetchStats, generateText, generateImage,
   adaptForTwitter, adaptForReddit, adaptForLinkedIn,
   adaptForDiscord, adaptForTelegram, adaptForFarcaster, adaptForHN,
 } from '../lib/content-gen.js';
@@ -9,29 +9,36 @@ import { config } from '../config.js';
 export const name = 'daily-stats';
 export const description = 'Post daily platform statistics to all configured networks';
 
+// Rotating templates for variety
+const TEMPLATES = [
+  (s) => `x402 Bazaar is live with ${s.totalServices} APIs for AI agents. ${s.uptimePercent}% uptime, ${s.recentCalls24h} calls in the last 24h, and ${s.totalPayments} on-chain USDC payments. The first marketplace where agents discover, pay, and use APIs autonomously via the x402 protocol. No subscriptions, no API keys — just crypto-native pay-as-you-go.`,
+
+  (s) => `${s.totalServices} APIs. ${s.uptimePercent}% uptime. ${s.totalPayments} on-chain payments. x402 Bazaar lets AI agents pay for APIs with USDC — per call, no middleman. Today: ${s.recentCalls24h} API calls processed. The future of autonomous agent commerce is here.`,
+
+  (s) => `Your AI agent needs data? x402 Bazaar has ${s.totalServices} APIs ready. Pay per call with USDC on Base — no subscriptions, no credit cards. ${s.recentCalls24h} calls today, ${s.uptimePercent}% uptime, ${s.totalPayments} verified payments on-chain. Built for agents, by agents.`,
+
+  (s) => `Daily stats from x402 Bazaar: ${s.totalServices} APIs live, ${s.uptimePercent}% uptime, ${s.recentCalls24h} calls in 24h. AI agents pay per call with USDC via x402 protocol. 95% revenue share for API creators. The autonomous API economy is growing.`,
+
+  (s) => `x402 Bazaar update: ${s.totalServices} curated APIs for AI agents. ${s.totalPayments} on-chain USDC payments to date. ${s.recentCalls24h} calls in the last 24h at ${s.uptimePercent}% uptime. No API keys needed — agents pay directly with crypto.`,
+];
+
 export async function execute() {
   console.log('[daily-stats] Fetching live stats...');
   const stats = await fetchStats();
 
-  // Build context for content generation
-  const context = [
-    `x402 Bazaar daily update:`,
-    `${stats.totalServices} APIs available on the marketplace.`,
-    `${stats.uptimePercent}% uptime across all services.`,
-    `${stats.recentCalls24h} API calls in the last 24 hours.`,
-    stats.totalPayments > 0 ? `${stats.totalPayments} on-chain USDC payments processed.` : '',
-    `The first autonomous API marketplace where AI agents pay per call with USDC.`,
-    `No subscriptions, no API keys needed — just crypto-native pay-as-you-go.`,
-    `Agents can discover, pay, and use APIs autonomously via the x402 protocol.`,
-  ].filter(Boolean).join(' ');
+  // Pick template based on day of month for variety
+  const templateIndex = new Date().getDate() % TEMPLATES.length;
+  const localContent = TEMPLATES[templateIndex](stats);
 
+  // Try AI-enhanced content, with good local fallback
   console.log('[daily-stats] Generating content...');
   const mainContent = await generateText(
-    `Write a short, engaging social media post about this API marketplace update. Be concise and enthusiastic but professional. Focus on what makes this unique (AI agents paying for APIs with crypto). Here are the facts: ${context}`,
-    400
+    `Write a short, engaging social media post about this API marketplace update. Be concise and enthusiastic but professional. Focus on what makes this unique (AI agents paying for APIs with crypto). Here are the facts: ${localContent}`,
+    400,
+    localContent
   );
 
-  // Generate image
+  // Generate image (optional, needs funded wallet)
   let imageUrl = null;
   if (config.generateImages) {
     console.log('[daily-stats] Generating visual...');
@@ -52,7 +59,7 @@ export async function execute() {
       body: mainContent,
     },
     farcaster: adaptForFarcaster(mainContent),
-    hn: { title: `x402 Bazaar – ${stats.totalServices} APIs for autonomous AI agents (pay-per-call USDC)`, url: config.projectUrl },
+    hn: { title: `x402 Bazaar \u2013 ${stats.totalServices} APIs for autonomous AI agents (pay-per-call USDC)`, url: config.projectUrl },
   };
 
   return { contents, stats, imageUrl };
