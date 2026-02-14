@@ -59,8 +59,12 @@ export const config = {
       accessToken: process.env.LINKEDIN_ACCESS_TOKEN,
     },
     farcaster: {
-      enabled: !!process.env.FARCASTER_MNEMONIC,
-      mnemonic: process.env.FARCASTER_MNEMONIC,
+      enabled: !!process.env.FARCASTER_SIGNER_KEY,
+      signerKey: process.env.FARCASTER_SIGNER_KEY,
+      fid: parseInt(process.env.FARCASTER_FID || '2788746'),
+      neynarApiKey: process.env.NEYNAR_API_KEY || '',
+      hubHost: 'nemes.farcaster.xyz',
+      hubPort: 2283,
     },
     hn: {
       enabled: false, // HN has no official posting API — generate-only
