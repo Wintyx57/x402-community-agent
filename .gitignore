@@ -1,3 +1,5 @@
 node_modules/
 .env
 *.log
+data/settings.json
+data/history.json
