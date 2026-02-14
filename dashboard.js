@@ -24,9 +24,9 @@ import * as farcaster from './lib/platforms/farcaster.js';
 
 const PORT = process.env.DASHBOARD_PORT || 3500;
 const DATA_DIR = join(__dirname, 'data');
-const SETTINGS_FILE = join(DATA_DIR, 'settings.json');
-const HISTORY_FILE = join(DATA_DIR, 'history.json');
-const QUEUE_FILE = join(DATA_DIR, 'queue.json');
+const SETTINGS_FILE = join(DATA_DIR, 'agent-config.json');
+const HISTORY_FILE = join(DATA_DIR, 'publication-history.json');
+const QUEUE_FILE = join(DATA_DIR, 'publication-queue.json');
 
 const logs = [];
 let history = [];
