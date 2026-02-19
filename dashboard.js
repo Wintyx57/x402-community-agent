@@ -153,6 +153,41 @@ function saveSettings(settings) {
   }
 }
 
+// S9 — Strip all secrets server-side before sending to frontend
+const SENSITIVE_KEYS = new Set([
+  'privateKey', 'botToken', 'apiKey', 'apiSecret',
+  'accessToken', 'accessSecret', 'clientId', 'clientSecret',
+  'password', 'mnemonic', 'webhookUrl',
+]);
+
+function sanitizeConfigForFrontend(settings) {
+  const safe = JSON.parse(JSON.stringify(settings));
+  // Remove wallet private key entirely
+  if (safe.wallet) {
+    safe.wallet.privateKey = undefined;
+    safe.wallet.configured = !!settings.wallet.privateKey;
+  }
+  // Strip all sensitive platform credentials
+  if (safe.platforms) {
+    Object.keys(safe.platforms).forEach(platform => {
+      const p = safe.platforms[platform];
+      for (const key of SENSITIVE_KEYS) {
+        if (key in p) {
+          p[key] = undefined;
+        }
+      }
+      // Expose only safe fields: enabled, autoPublish, subreddits, etc.
+      p.configured = !!(settings.platforms[platform].botToken
+        || settings.platforms[platform].apiKey
+        || settings.platforms[platform].accessToken
+        || settings.platforms[platform].webhookUrl
+        || settings.platforms[platform].mnemonic
+        || settings.platforms[platform].clientId);
+    });
+  }
+  return safe;
+}
+
 function applySettingsToConfig(settings) {
   // Update runtime config
   config.maxBudget = settings.wallet.maxBudget;
@@ -612,24 +647,7 @@ async function handleApi(req, res) {
     const settings = fs.existsSync(SETTINGS_FILE)
       ? JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
       : DEFAULT_SETTINGS;
-    // Redact sensitive values for security
-    const safe = JSON.parse(JSON.stringify(settings));
-    if (safe.wallet.privateKey) {
-      safe.wallet.privateKey = '***' + safe.wallet.privateKey.slice(-8);
-    }
-    Object.keys(safe.platforms).forEach(platform => {
-      const p = safe.platforms[platform];
-      if (p.botToken) p.botToken = '***' + p.botToken.slice(-8);
-      if (p.apiKey) p.apiKey = '***' + p.apiKey.slice(-8);
-      if (p.apiSecret) p.apiSecret = '***' + p.apiSecret.slice(-8);
-      if (p.accessToken) p.accessToken = '***' + p.accessToken.slice(-8);
-      if (p.accessSecret) p.accessSecret = '***' + p.accessSecret.slice(-8);
-      if (p.clientId) p.clientId = '***' + p.clientId.slice(-8);
-      if (p.clientSecret) p.clientSecret = '***' + p.clientSecret.slice(-8);
-      if (p.password) p.password = '***';
-      if (p.mnemonic) p.mnemonic = '*** (redacted)';
-      if (p.webhookUrl) p.webhookUrl = p.webhookUrl.slice(0, 30) + '***';
-    });
+    const safe = sanitizeConfigForFrontend(settings);
     return json(res, safe);
   }
 
