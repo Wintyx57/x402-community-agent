@@ -6,6 +6,7 @@ import { dirname, join } from 'path';
 import http from 'http';
 import fs from 'fs';
 import crypto from 'crypto';
+import { EventEmitter } from 'events';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -31,6 +32,8 @@ const QUEUE_FILE = join(DATA_DIR, 'publication-queue.json');
 const logs = [];
 let history = [];
 let queue = [];
+const logEmitter = new EventEmitter();
+logEmitter.setMaxListeners(50);
 let schedulerInterval = null;
 let schedulerRunning = false;
 let lastSchedulerCheck = null;
@@ -231,6 +234,7 @@ function addLog(level, msg) {
   logs.push(entry);
   if (logs.length > 200) logs.shift();
   console.log(`[${level}] ${msg}`);
+  try { logEmitter.emit('log', entry); } catch { /* ignore */ }
 }
 
 // ─── Queue Management ───────────────────────────────────────────
@@ -921,6 +925,28 @@ async function handleApi(req, res) {
     }
   }
 
+  // GET /api/stream/logs — SSE real-time log stream
+  if (path === '/api/stream/logs' && req.method === 'GET') {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': '*',
+    });
+    // Send last 20 logs as initial snapshot
+    res.write(`event: snapshot\ndata: ${JSON.stringify(logs.slice(-20))}\n\n`);
+    const onLog = (entry) => {
+      res.write(`event: log\ndata: ${JSON.stringify(entry)}\n\n`);
+    };
+    logEmitter.on('log', onLog);
+    const ping = setInterval(() => res.write(': ping\n\n'), 20000);
+    req.on('close', () => {
+      logEmitter.off('log', onLog);
+      clearInterval(ping);
+    });
+    return; // keep connection open
+  }
+
   // GET /api/logs
   if (path === '/api/logs' && req.method === 'GET') {
     return json(res, logs.slice(-50));
@@ -929,6 +955,37 @@ async function handleApi(req, res) {
   // GET /api/history
   if (path === '/api/history' && req.method === 'GET') {
     return json(res, history.slice(-20));
+  }
+
+  // GET /api/health — machine-readable health check (used by x402-backend monitoring)
+  if (path === '/api/health' && req.method === 'GET') {
+    const settings = loadCurrentSettings();
+    const enabledPlatforms = Object.entries(settings.platforms || {})
+      .filter(([, cfg]) => cfg.enabled)
+      .map(([name]) => name);
+    const pendingApproval = queue.filter(q => q.status === 'awaiting_approval').length;
+    const retryCount = queue.filter(q => q.status === 'retry').length;
+    return json(res, {
+      status: 'ok',
+      uptime: Math.floor(process.uptime()),
+      scheduler: {
+        running: schedulerRunning,
+        lastCheck: lastSchedulerCheck,
+        nextPost: getNextScheduledPost(),
+      },
+      queue: {
+        total: queue.length,
+        pendingApproval,
+        retry: retryCount,
+      },
+      platforms: {
+        enabled: enabledPlatforms,
+        count: enabledPlatforms.length,
+      },
+      logs: logs.length,
+      history: history.length,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   return json(res, { error: 'Not found' }, 404);
@@ -979,7 +1036,11 @@ function readBody(req) {
 const server = http.createServer(async (req, res) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' });
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type,X-Admin-Token,Authorization',
+    });
     return res.end();
   }
 
@@ -1006,3 +1067,20 @@ server.listen(PORT, () => {
     startScheduler();
   }
 });
+
+// ─── Graceful Shutdown ────────────────────────────────────────────
+function gracefulShutdown(signal) {
+  console.log(`\n[${signal}] Shutting down community agent...`);
+  if (schedulerInterval) {
+    clearInterval(schedulerInterval);
+    schedulerInterval = null;
+  }
+  saveQueue();
+  saveHistory();
+  addLog('info', `Agent stopped (${signal})`);
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 5000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
