@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: x402-community-agent
+    env: node
+    plan: starter
+    buildCommand: npm install --production
+    startCommand: node dashboard.js
+    envVars:
+      - key: X402_SERVER_URL
+        value: https://x402-api.onrender.com
+      - key: DASHBOARD_PORT
+        value: "3500"
+      - key: GENERATE_IMAGES
+        value: "true"
+      - key: DEFAULT_LANGUAGE
+        value: fr
+      - key: AGENT_PRIVATE_KEY
+        sync: false
+      - key: MAX_BUDGET_USDC
+        value: "0.50"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: TELEGRAM_CHANNEL_ID
+        sync: false
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+      - key: TWITTER_API_KEY
+        sync: false
+      - key: TWITTER_API_SECRET
+        sync: false
+      - key: TWITTER_ACCESS_TOKEN
+        sync: false
+      - key: TWITTER_ACCESS_SECRET
+        sync: false
+      - key: REDDIT_CLIENT_ID
+        sync: false
+      - key: REDDIT_CLIENT_SECRET
+        sync: false
+      - key: REDDIT_USERNAME
+        sync: false
+      - key: REDDIT_PASSWORD
+        sync: false
+      - key: DEVTO_API_KEY
+        sync: false
+      - key: LINKEDIN_ACCESS_TOKEN
+        sync: false
+      - key: FARCASTER_MNEMONIC
+        sync: false
