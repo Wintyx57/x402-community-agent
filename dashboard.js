@@ -245,12 +245,14 @@ function sanitizeConfigForFrontend(settings) {
 }
 
 function applySettingsToConfig(settings) {
-  // Update runtime config
-  if (settings.wallet) config.maxBudget = settings.wallet.maxBudget;
-  config.defaultLanguage = settings.content.defaultLanguage;
-  config.generateImages = settings.content.generateImages;
-  config.projectName = settings.content.projectName;
-  config.projectUrl = settings.content.projectUrl;
+  // Update runtime config (defensive — guard every access)
+  if (settings.wallet?.maxBudget != null) config.maxBudget = settings.wallet.maxBudget;
+  if (settings.content) {
+    if (settings.content.defaultLanguage) config.defaultLanguage = settings.content.defaultLanguage;
+    if (settings.content.generateImages != null) config.generateImages = settings.content.generateImages;
+    if (settings.content.projectName) config.projectName = settings.content.projectName;
+    if (settings.content.projectUrl) config.projectUrl = settings.content.projectUrl;
+  }
 
   // Update platform configs
   Object.keys(settings.platforms).forEach(platform => {
@@ -594,17 +596,28 @@ async function processRetryQueue(settings) {
 // Secrets are NEVER included: they come from env vars only.
 // Incoming may contain redacted placeholders (***) or be missing secret keys — both are ignored.
 function mergeSettings(existing, incoming) {
-  const merged = JSON.parse(JSON.stringify(incoming));
+  // Deep merge: existing as base, incoming overrides
+  const base = JSON.parse(JSON.stringify(existing));
+  const inc = JSON.parse(JSON.stringify(incoming));
   // Remove any secret fields sent by the frontend (should not be sent, but defensive)
-  delete merged.wallet;
-  if (merged.platforms) {
-    for (const platform of Object.values(merged.platforms)) {
+  delete inc.wallet;
+  if (inc.platforms) {
+    for (const platform of Object.values(inc.platforms)) {
       for (const key of SENSITIVE_PERSIST_KEYS) {
         delete platform[key];
       }
     }
   }
-  return merged;
+  // Merge top-level sections
+  if (inc.platforms) {
+    for (const [name, val] of Object.entries(inc.platforms)) {
+      base.platforms[name] = { ...base.platforms[name], ...val };
+    }
+  }
+  if (inc.content) base.content = { ...base.content, ...inc.content };
+  if (inc.scheduler) base.scheduler = { ...base.scheduler, ...inc.scheduler };
+  if (inc.schedule) base.schedule = inc.schedule; // replace entirely
+  return base;
 }
 
 // ─── Platform Connection Tests ───────────────────────────────────
