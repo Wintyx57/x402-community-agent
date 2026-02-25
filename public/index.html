@@ -151,6 +151,19 @@
     .log-time { color: var(--text3); white-space: nowrap; min-width: 70px; }
     .log-info { color: var(--blue); }
     .log-error { color: var(--red); }
+    .log-warn { color: var(--yellow); }
+    /* ─── SSE indicator ─── */
+    .sse-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--text3); margin-right: 6px; transition: background 0.3s; }
+    .sse-dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .sse-dot.error { background: var(--red); }
+    /* ─── Log filter bar ─── */
+    .log-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .log-filter-btn { padding: 4px 12px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--text3); font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+    .log-filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .log-filter-btn.active-error { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+    .log-search { flex: 1; min-width: 120px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 12px; font-family: 'Consolas', monospace; outline: none; }
+    .log-search:focus { border-color: var(--accent); }
+    .log-search::placeholder { color: var(--text3); }
 
     /* ─── History ─── */
     .history-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); gap: 12px; }
@@ -498,11 +511,27 @@
   <div class="page" id="page-logs">
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Journaux d'activite</span>
-        <button class="btn btn-ghost btn-sm" onclick="loadLogs()">Rafraichir</button>
+        <span class="card-title">
+          <span class="sse-dot" id="sse-dot"></span>
+          Journaux d'activite
+        </span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="sse-label" style="font-size:11px;color:var(--text3)">En attente...</span>
+          <button class="btn btn-ghost btn-sm" onclick="exportLogs()">Exporter</button>
+          <button class="btn btn-red btn-sm" onclick="clearLogs()">Vider</button>
+        </div>
+      </div>
+      <div class="log-toolbar">
+        <button class="log-filter-btn active" id="lf-all" onclick="setLogFilter('all')">Tous</button>
+        <button class="log-filter-btn" id="lf-info" onclick="setLogFilter('info')">Info</button>
+        <button class="log-filter-btn" id="lf-error" onclick="setLogFilter('error')">Erreurs</button>
+        <input class="log-search" id="log-search" type="text" placeholder="Rechercher..." oninput="renderLogsPage()">
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);cursor:pointer">
+          <input type="checkbox" id="log-autoscroll" checked> Auto-scroll
+        </label>
       </div>
       <div class="log-container" id="logs-full" style="max-height:500px">
-        <div class="loading-overlay"><span class="spinner"></span> Chargement...</div>
+        <div class="loading-overlay"><span class="spinner"></span> Connexion SSE...</div>
       </div>
     </div>
   </div>
@@ -564,7 +593,7 @@ function navigateTo(page) {
   document.getElementById('sidebar').classList.remove('open');
   if (page === 'settings' && !settingsCache) loadAllSettings();
   if (page === 'history') loadHistory();
-  if (page === 'logs') loadLogs();
+  if (page === 'logs') renderLogsPage(); // SSE already running — just re-render
   if (page === 'automation') { loadSchedulerStatus(); loadQueue(); }
 }
 
@@ -1028,22 +1057,136 @@ async function loadHistory() {
   } catch (e) { document.getElementById('history-list').innerHTML = '<div class="empty"><p>Erreur de chargement</p></div>'; }
 }
 
-// ─── Logs ────────────────────────────────────────────────────────
-async function loadLogs() {
-  try {
-    const logs = await api('/api/logs');
-    const el = document.getElementById('logs-full');
-    el.innerHTML = logs.map(l =>
-      `<div class="log-entry"><span class="log-time">${l.time.slice(11, 19)}</span><span class="log-${l.level}">${l.msg}</span></div>`
-    ).join('') || '<div style="color:var(--text3);padding:12px">Aucun journal</div>';
+// ─── Logs SSE + Filter ───────────────────────────────────────────
+let sseSource = null;
+let allLogs = [];       // raw logs from SSE/initial load
+let activeLogFilter = 'all';
+
+function setLogFilter(level) {
+  activeLogFilter = level;
+  document.getElementById('lf-all').className = 'log-filter-btn' + (level === 'all' ? ' active' : '');
+  document.getElementById('lf-info').className = 'log-filter-btn' + (level === 'info' ? ' active' : '');
+  document.getElementById('lf-error').className = 'log-filter-btn' + (level === 'error' ? ' active-error' : '');
+  renderLogsPage();
+}
+
+function renderLogsPage() {
+  const query = document.getElementById('log-search')?.value.toLowerCase() || '';
+  let filtered = allLogs;
+  if (activeLogFilter !== 'all') filtered = filtered.filter(l => l.level === activeLogFilter);
+  if (query) filtered = filtered.filter(l => l.msg.toLowerCase().includes(query));
+
+  const el = document.getElementById('logs-full');
+  if (!el) return;
+  if (filtered.length === 0) {
+    el.innerHTML = '<div style="color:var(--text3);padding:12px">Aucun journal correspondant</div>';
+    return;
+  }
+  el.innerHTML = filtered.map(l =>
+    `<div class="log-entry"><span class="log-time">${l.time.slice(11, 19)}</span><span class="log-${l.level}">${escapeHtml(l.msg)}</span></div>`
+  ).join('');
+  if (document.getElementById('log-autoscroll')?.checked) {
     el.scrollTop = el.scrollHeight;
-  } catch {}
+  }
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function setSseStatus(state) {
+  const dot = document.getElementById('sse-dot');
+  const label = document.getElementById('sse-label');
+  if (!dot || !label) return;
+  dot.className = 'sse-dot ' + state;
+  const labels = { connected: 'Temps reel', error: 'Reconnexion...', '': 'En attente...' };
+  label.textContent = labels[state] || 'En attente...';
+  label.style.color = state === 'connected' ? 'var(--green)' : state === 'error' ? 'var(--red)' : 'var(--text3)';
+}
+
+function startLogSSE() {
+  if (sseSource) { sseSource.close(); sseSource = null; }
+  setSseStatus('');
+  sseSource = new EventSource('/api/stream/logs');
+
+  sseSource.addEventListener('snapshot', e => {
+    const snap = JSON.parse(e.data);
+    // Merge snapshot into allLogs (deduplicate by time+msg)
+    const existing = new Set(allLogs.map(l => l.time + l.msg));
+    for (const entry of snap) {
+      if (!existing.has(entry.time + entry.msg)) allLogs.push(entry);
+    }
+    // Keep last 500 in memory
+    if (allLogs.length > 500) allLogs = allLogs.slice(-500);
+    setSseStatus('connected');
+    renderLogsPage();
+  });
+
+  sseSource.addEventListener('log', e => {
+    const entry = JSON.parse(e.data);
+    allLogs.push(entry);
+    if (allLogs.length > 500) allLogs.shift();
+    renderLogsPage();
+    // Also update dashboard mini-log if visible
+    if (currentPage === 'dashboard') updateDashMiniLog(entry);
+  });
+
+  sseSource.onerror = () => {
+    setSseStatus('error');
+    // EventSource auto-reconnects, just update UI
+  };
+
+  sseSource.onopen = () => setSseStatus('connected');
+}
+
+function stopLogSSE() {
+  if (sseSource) { sseSource.close(); sseSource = null; }
+  setSseStatus('');
+}
+
+function updateDashMiniLog(entry) {
+  const el = document.getElementById('dash-logs');
+  if (!el) return;
+  // Append to mini log (keep last 8 entries)
+  const existing = el.querySelectorAll('.log-entry');
+  if (existing.length >= 8) existing[0].remove();
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = `<span class="log-time">${entry.time.slice(11, 19)}</span><span class="log-${entry.level}">${escapeHtml(entry.msg)}</span>`;
+  el.appendChild(div);
+}
+
+async function clearLogs() {
+  if (!confirm('Vider tous les journaux ?')) return;
+  try {
+    await api('/api/logs', { method: 'DELETE' });
+    allLogs = [];
+    renderLogsPage();
+    toast('Journaux vides');
+  } catch (e) { toast('Erreur: ' + e.message, 'fail'); }
+}
+
+function exportLogs() {
+  const query = document.getElementById('log-search')?.value.toLowerCase() || '';
+  let filtered = allLogs;
+  if (activeLogFilter !== 'all') filtered = filtered.filter(l => l.level === activeLogFilter);
+  if (query) filtered = filtered.filter(l => l.msg.toLowerCase().includes(query));
+
+  // Export as JSON
+  const blob = new Blob([JSON.stringify(filtered, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `x402-logs-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`${filtered.length} entrees exportees`);
 }
 
 // ─── Init ────────────────────────────────────────────────────────
 loadDashboard();
+startLogSSE(); // Always stream logs in background for dash mini-log
 setInterval(() => { if (currentPage === 'dashboard') loadDashboard(); }, 30000);
-setInterval(() => { if (currentPage === 'logs') loadLogs(); }, 10000);
 setInterval(() => { if (currentPage === 'automation') { loadSchedulerStatus(); loadQueue(); } }, 15000);
 </script>
 </body>

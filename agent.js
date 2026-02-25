@@ -44,8 +44,7 @@ async function publishAll(contents, imageUrl) {
   if (contents.telegram) {
     try {
       const tg = contents.telegram;
-      const res = await postToChannel(tg.text || tg, tg.imageUrl || imageUrl);
-      results.telegram_channel = { success: !!res?.ok, message: res?.ok ? 'Posted' : 'Failed' };
+      results.telegram_channel = await postToChannel(tg.text || tg, tg.imageUrl || imageUrl);
     } catch (e) { results.telegram_channel = { success: false, message: e.message }; }
   }
 

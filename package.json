@@ -11,7 +11,7 @@
     "weekly": "node agent.js --strategy weekly-recap",
     "announce": "node agent.js --strategy new-api",
     "preview": "node agent.js --preview",
-    "test": "node --test tests/"
+    "test": "node --test \"tests/*.test.js\""
   },
   "dependencies": {
     "@farcaster/core": "^0.18.10",

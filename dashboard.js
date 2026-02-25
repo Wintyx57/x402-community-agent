@@ -28,6 +28,8 @@ const DATA_DIR = join(__dirname, 'data');
 const SETTINGS_FILE = join(DATA_DIR, 'agent-config.json');
 const HISTORY_FILE = join(DATA_DIR, 'publication-history.json');
 const QUEUE_FILE = join(DATA_DIR, 'publication-queue.json');
+const LOGS_FILE = join(DATA_DIR, 'agent-logs.json');
+const LOGS_MAX_PERSIST = 1000; // max log entries on disk
 
 const logs = [];
 let history = [];
@@ -36,27 +38,43 @@ const logEmitter = new EventEmitter();
 logEmitter.setMaxListeners(50);
 let schedulerInterval = null;
 let schedulerRunning = false;
+let schedulerTickRunning = false; // Bug 1: race condition guard
 let lastSchedulerCheck = null;
 
-// Default settings structure
+// Bug 2: timezone helper — reads TZ_OFFSET env var (signed integer, e.g. "2" for UTC+2).
+// Falls back to server local time if TZ_OFFSET is not set.
+function getLocalNow() {
+  const offsetHours = parseInt(process.env.TZ_OFFSET ?? 'NaN', 10);
+  if (!isNaN(offsetHours)) {
+    // Shift epoch by the configured offset; use UTC getters to read "local" fields.
+    return new Date(Date.now() + offsetHours * 3600000);
+  }
+  return new Date();
+}
+
+// Bug 2: "YYYY-MM-DD" in the configured local timezone (works with the shifted date).
+function getLocalDateStr(localNow) {
+  const y = localNow.getUTCFullYear();
+  const mo = String(localNow.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(localNow.getUTCDate()).padStart(2, '0');
+  return `${y}-${mo}-${d}`;
+}
+
+// Non-sensitive default settings — NO secrets stored here, ever.
 const DEFAULT_SETTINGS = {
-  wallet: {
-    privateKey: '',
-    maxBudget: 0.50
-  },
   platforms: {
-    telegram: { enabled: false, autoPublish: false, botToken: '', adminChatId: '', channelId: '' },
-    discord: { enabled: false, autoPublish: false, webhookUrl: '' },
-    twitter: { enabled: false, autoPublish: false, apiKey: '', apiSecret: '', accessToken: '', accessSecret: '' },
-    reddit: { enabled: false, autoPublish: false, clientId: '', clientSecret: '', username: '', password: '', subreddits: ['artificial', 'webdev', 'SideProject'] },
-    devto: { enabled: false, autoPublish: false, apiKey: '' },
-    linkedin: { enabled: false, autoPublish: false, accessToken: '' },
-    farcaster: { enabled: false, autoPublish: false, mnemonic: '' },
+    telegram: { enabled: false, autoPublish: false, channelId: '' },
+    discord: { enabled: false, autoPublish: false },
+    twitter: { enabled: false, autoPublish: false },
+    reddit: { enabled: false, autoPublish: false, subreddits: ['artificial', 'webdev', 'SideProject'] },
+    devto: { enabled: false, autoPublish: false },
+    linkedin: { enabled: false, autoPublish: false },
+    farcaster: { enabled: false, autoPublish: false, fid: 0 },
     hn: { enabled: false, autoPublish: false }
   },
   content: {
-    generateImages: true,
-    defaultLanguage: 'fr',
+    generateImages: false,
+    defaultLanguage: 'en',
     projectName: 'x402 Bazaar',
     projectUrl: 'https://x402bazaar.org'
   },
@@ -77,6 +95,80 @@ const DEFAULT_SETTINGS = {
   }
 };
 
+// Keys that must NEVER be persisted to disk (always sourced from env vars only)
+const SENSITIVE_PERSIST_KEYS = new Set([
+  'privateKey', 'botToken', 'apiKey', 'apiSecret',
+  'accessToken', 'accessSecret', 'clientId', 'clientSecret',
+  'password', 'mnemonic', 'signerKey', 'neynarApiKey', 'webhookUrl', 'adminChatId',
+]);
+
+// Inject secrets from env vars into a runtime settings object (result is NEVER written to disk)
+function injectSecretsFromEnv(settings) {
+  const s = JSON.parse(JSON.stringify(settings));
+
+  // Wallet — always sourced from env only
+  s.wallet = {
+    maxBudget: parseFloat(process.env.MAX_BUDGET_USDC || '0.50'),
+    privateKey: process.env.AGENT_PRIVATE_KEY || '',
+  };
+
+  if (!s.platforms.telegram) s.platforms.telegram = {};
+  s.platforms.telegram.botToken = process.env.TELEGRAM_BOT_TOKEN || '';
+  s.platforms.telegram.adminChatId = process.env.TELEGRAM_CHAT_ID || '';
+  if (process.env.TELEGRAM_CHANNEL_ID && !s.platforms.telegram.channelId) {
+    s.platforms.telegram.channelId = process.env.TELEGRAM_CHANNEL_ID;
+  }
+
+  if (!s.platforms.discord) s.platforms.discord = {};
+  s.platforms.discord.webhookUrl = process.env.DISCORD_WEBHOOK_URL || '';
+
+  if (!s.platforms.twitter) s.platforms.twitter = {};
+  s.platforms.twitter.apiKey = process.env.TWITTER_API_KEY || '';
+  s.platforms.twitter.apiSecret = process.env.TWITTER_API_SECRET || '';
+  s.platforms.twitter.accessToken = process.env.TWITTER_ACCESS_TOKEN || '';
+  s.platforms.twitter.accessSecret = process.env.TWITTER_ACCESS_SECRET || '';
+
+  if (!s.platforms.reddit) s.platforms.reddit = {};
+  s.platforms.reddit.clientId = process.env.REDDIT_CLIENT_ID || '';
+  s.platforms.reddit.clientSecret = process.env.REDDIT_CLIENT_SECRET || '';
+  s.platforms.reddit.username = process.env.REDDIT_USERNAME || '';
+  s.platforms.reddit.password = process.env.REDDIT_PASSWORD || '';
+
+  if (!s.platforms.devto) s.platforms.devto = {};
+  s.platforms.devto.apiKey = process.env.DEVTO_API_KEY || '';
+
+  if (!s.platforms.linkedin) s.platforms.linkedin = {};
+  s.platforms.linkedin.accessToken = process.env.LINKEDIN_ACCESS_TOKEN || '';
+
+  if (!s.platforms.farcaster) s.platforms.farcaster = {};
+  s.platforms.farcaster.signerKey = process.env.FARCASTER_SIGNER_KEY || '';
+  s.platforms.farcaster.neynarApiKey = process.env.NEYNAR_API_KEY || '';
+  if (!s.platforms.farcaster.fid) {
+    s.platforms.farcaster.fid = parseInt(process.env.FARCASTER_FID || '0');
+  }
+
+  if (process.env.DEFAULT_LANGUAGE) s.content.defaultLanguage = process.env.DEFAULT_LANGUAGE;
+  if (process.env.GENERATE_IMAGES !== undefined) {
+    s.content.generateImages = process.env.GENERATE_IMAGES !== 'false';
+  }
+
+  return s;
+}
+
+// Strip all secrets before writing to disk — only non-sensitive fields are persisted
+function stripSecretsForPersist(settings) {
+  const safe = JSON.parse(JSON.stringify(settings));
+  delete safe.wallet; // never persisted
+  if (safe.platforms) {
+    for (const platform of Object.values(safe.platforms)) {
+      for (const key of SENSITIVE_PERSIST_KEYS) {
+        delete platform[key];
+      }
+    }
+  }
+  return safe;
+}
+
 // ─── Initialization ──────────────────────────────────────────────
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -87,67 +179,31 @@ function ensureDataDir() {
 }
 
 function loadSettings() {
+  let base = DEFAULT_SETTINGS;
   if (fs.existsSync(SETTINGS_FILE)) {
     try {
-      const saved = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
-      // Merge with env vars (env takes priority)
-      if (process.env.AGENT_PRIVATE_KEY) {
-        saved.wallet.privateKey = process.env.AGENT_PRIVATE_KEY;
-      }
-      if (process.env.MAX_BUDGET_USDC) {
-        saved.wallet.maxBudget = parseFloat(process.env.MAX_BUDGET_USDC);
-      }
-      // Merge platform configs from env
-      if (process.env.TELEGRAM_BOT_TOKEN) {
-        saved.platforms.telegram.botToken = process.env.TELEGRAM_BOT_TOKEN;
-        saved.platforms.telegram.adminChatId = process.env.TELEGRAM_CHAT_ID || saved.platforms.telegram.adminChatId;
-        saved.platforms.telegram.channelId = process.env.TELEGRAM_CHANNEL_ID || saved.platforms.telegram.channelId;
-      }
-      if (process.env.DISCORD_WEBHOOK_URL) {
-        saved.platforms.discord.webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-      }
-      if (process.env.TWITTER_API_KEY) {
-        saved.platforms.twitter.apiKey = process.env.TWITTER_API_KEY;
-        saved.platforms.twitter.apiSecret = process.env.TWITTER_API_SECRET || saved.platforms.twitter.apiSecret;
-        saved.platforms.twitter.accessToken = process.env.TWITTER_ACCESS_TOKEN || saved.platforms.twitter.accessToken;
-        saved.platforms.twitter.accessSecret = process.env.TWITTER_ACCESS_SECRET || saved.platforms.twitter.accessSecret;
-      }
-      if (process.env.REDDIT_CLIENT_ID) {
-        saved.platforms.reddit.clientId = process.env.REDDIT_CLIENT_ID;
-        saved.platforms.reddit.clientSecret = process.env.REDDIT_CLIENT_SECRET || saved.platforms.reddit.clientSecret;
-        saved.platforms.reddit.username = process.env.REDDIT_USERNAME || saved.platforms.reddit.username;
-        saved.platforms.reddit.password = process.env.REDDIT_PASSWORD || saved.platforms.reddit.password;
-      }
-      if (process.env.DEVTO_API_KEY) {
-        saved.platforms.devto.apiKey = process.env.DEVTO_API_KEY;
-      }
-      if (process.env.LINKEDIN_ACCESS_TOKEN) {
-        saved.platforms.linkedin.accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
-      }
-      if (process.env.FARCASTER_MNEMONIC) {
-        saved.platforms.farcaster.mnemonic = process.env.FARCASTER_MNEMONIC;
-      }
-      if (process.env.DEFAULT_LANGUAGE) {
-        saved.content.defaultLanguage = process.env.DEFAULT_LANGUAGE;
-      }
-      if (process.env.GENERATE_IMAGES !== undefined) {
-        saved.content.generateImages = process.env.GENERATE_IMAGES !== 'false';
-      }
-
-      applySettingsToConfig(saved);
+      base = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
+      // Ensure all platform keys exist (backward compat with older JSON)
+      base.platforms = { ...DEFAULT_SETTINGS.platforms, ...base.platforms };
+      base.content = { ...DEFAULT_SETTINGS.content, ...base.content };
       addLog('info', 'Settings loaded from file');
-      return saved;
     } catch (e) {
       addLog('error', `Failed to load settings: ${e.message}`);
+      base = DEFAULT_SETTINGS;
     }
   }
-  return DEFAULT_SETTINGS;
+  // Always inject secrets from env — env takes absolute priority
+  const runtime = injectSecretsFromEnv(base);
+  applySettingsToConfig(runtime);
+  return runtime;
 }
 
 function saveSettings(settings) {
   try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
-    applySettingsToConfig(settings);
+    // SECURITY: strip all secrets before writing to disk
+    const toPersist = stripSecretsForPersist(settings);
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(toPersist, null, 2), 'utf-8');
+    applySettingsToConfig(settings); // apply full runtime settings (with secrets) to config
     addLog('info', 'Settings saved');
     return true;
   } catch (e) {
@@ -157,35 +213,32 @@ function saveSettings(settings) {
 }
 
 // S9 — Strip all secrets server-side before sending to frontend
-const SENSITIVE_KEYS = new Set([
+const SENSITIVE_FRONTEND_KEYS = new Set([
   'privateKey', 'botToken', 'apiKey', 'apiSecret',
   'accessToken', 'accessSecret', 'clientId', 'clientSecret',
-  'password', 'mnemonic', 'webhookUrl',
+  'password', 'mnemonic', 'signerKey', 'neynarApiKey', 'webhookUrl', 'adminChatId',
 ]);
 
 function sanitizeConfigForFrontend(settings) {
   const safe = JSON.parse(JSON.stringify(settings));
-  // Remove wallet private key entirely
+  // Wallet: remove private key, expose only configured flag + budget
   if (safe.wallet) {
-    safe.wallet.privateKey = undefined;
-    safe.wallet.configured = !!settings.wallet.privateKey;
+    delete safe.wallet.privateKey;
+    safe.wallet.configured = !!(settings.wallet && settings.wallet.privateKey);
+  } else {
+    safe.wallet = { configured: !!process.env.AGENT_PRIVATE_KEY, maxBudget: parseFloat(process.env.MAX_BUDGET_USDC || '0.50') };
   }
   // Strip all sensitive platform credentials
   if (safe.platforms) {
     Object.keys(safe.platforms).forEach(platform => {
       const p = safe.platforms[platform];
-      for (const key of SENSITIVE_KEYS) {
-        if (key in p) {
-          p[key] = undefined;
-        }
+      const orig = settings.platforms?.[platform] || {};
+      for (const key of SENSITIVE_FRONTEND_KEYS) {
+        delete p[key];
       }
-      // Expose only safe fields: enabled, autoPublish, subreddits, etc.
-      p.configured = !!(settings.platforms[platform].botToken
-        || settings.platforms[platform].apiKey
-        || settings.platforms[platform].accessToken
-        || settings.platforms[platform].webhookUrl
-        || settings.platforms[platform].mnemonic
-        || settings.platforms[platform].clientId);
+      // Expose boolean: is this platform configured (has credentials)?
+      p.configured = !!(orig.botToken || orig.apiKey || orig.accessToken
+        || orig.webhookUrl || orig.mnemonic || orig.signerKey || orig.clientId);
     });
   }
   return safe;
@@ -193,7 +246,7 @@ function sanitizeConfigForFrontend(settings) {
 
 function applySettingsToConfig(settings) {
   // Update runtime config
-  config.maxBudget = settings.wallet.maxBudget;
+  if (settings.wallet) config.maxBudget = settings.wallet.maxBudget;
   config.defaultLanguage = settings.content.defaultLanguage;
   config.generateImages = settings.content.generateImages;
   config.projectName = settings.content.projectName;
@@ -229,12 +282,39 @@ function saveHistory() {
   }
 }
 
+function loadLogs() {
+  if (fs.existsSync(LOGS_FILE)) {
+    try {
+      const saved = JSON.parse(fs.readFileSync(LOGS_FILE, 'utf-8'));
+      if (Array.isArray(saved)) {
+        // Keep only last 200 in memory
+        const slice = saved.slice(-200);
+        logs.push(...slice);
+      }
+    } catch (e) {
+      console.error(`[error] Failed to load logs: ${e.message}`);
+    }
+  }
+}
+
+function persistLogs() {
+  try {
+    // Keep last LOGS_MAX_PERSIST on disk
+    const toPersist = logs.slice(-LOGS_MAX_PERSIST);
+    fs.writeFileSync(LOGS_FILE, JSON.stringify(toPersist, null, 2), 'utf-8');
+  } catch (e) {
+    console.error(`[error] Failed to persist logs: ${e.message}`);
+  }
+}
+
 function addLog(level, msg) {
   const entry = { time: new Date().toISOString(), level, msg };
   logs.push(entry);
   if (logs.length > 200) logs.shift();
   console.log(`[${level}] ${msg}`);
   try { logEmitter.emit('log', entry); } catch { /* ignore */ }
+  // Async persist every 10 logs to avoid blocking
+  if (logs.length % 10 === 0) setImmediate(persistLogs);
 }
 
 // ─── Queue Management ───────────────────────────────────────────
@@ -276,9 +356,18 @@ function createQueueItem(strategy, previewResult, platforms, autoPublish = false
 function startScheduler() {
   if (schedulerInterval) return;
   schedulerRunning = true;
-  schedulerInterval = setInterval(schedulerTick, 60_000);
-  addLog('info', 'Scheduler demarré — vérification chaque minute');
-  schedulerTick();
+
+  // Bug 3 (jitter): align first tick to the next full minute instead of firing
+  // immediately (which would be out-of-sync with the 60-s interval).
+  const now = Date.now();
+  const msUntilNextMinute = 60_000 - (now % 60_000);
+  setTimeout(() => {
+    if (!schedulerRunning) return; // stopped before first tick
+    schedulerTick();
+    schedulerInterval = setInterval(schedulerTick, 60_000);
+  }, msUntilNextMinute);
+
+  addLog('info', `Scheduler démarré — premier tick dans ${Math.round(msUntilNextMinute / 1000)}s`);
 }
 
 function stopScheduler() {
@@ -315,39 +404,56 @@ function getNextScheduledPost() {
 }
 
 function loadCurrentSettings() {
+  let base = DEFAULT_SETTINGS;
   if (fs.existsSync(SETTINGS_FILE)) {
-    try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8')); } catch {}
+    try {
+      const saved = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
+      base = { ...DEFAULT_SETTINGS, ...saved, platforms: { ...DEFAULT_SETTINGS.platforms, ...saved.platforms } };
+    } catch {}
   }
-  return DEFAULT_SETTINGS;
+  // Always inject secrets from env at runtime
+  return injectSecretsFromEnv(base);
 }
 
 async function schedulerTick() {
-  const now = new Date();
-  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const day = dayNames[now.getDay()];
-  const todayStr = now.toISOString().slice(0, 10);
-  lastSchedulerCheck = now.toISOString();
-
-  const settings = loadCurrentSettings();
-  const daySchedule = settings.schedule[day] || [];
-
-  for (const entry of daySchedule) {
-    const strategyName = typeof entry === 'string' ? entry : entry.strategy;
-    const scheduledTime = typeof entry === 'string' ? (settings.scheduler?.defaultTime || '09:00') : entry.time;
-
-    if (time === scheduledTime) {
-      const alreadyDone = queue.some(q =>
-        q.strategy === strategyName && q.createdAt.startsWith(todayStr)
-      );
-      if (alreadyDone) continue;
-
-      addLog('info', `Scheduler: exécution ${strategyName} (${time})`);
-      await executeScheduledStrategy(strategyName, settings);
-    }
+  // Bug 1: prevent concurrent ticks if a previous one is still running
+  if (schedulerTickRunning) {
+    addLog('info', 'Scheduler: tick précédent encore en cours, ignoré');
+    return;
   }
+  schedulerTickRunning = true;
 
-  await processRetryQueue(settings);
+  try {
+    // Bug 2: use local timezone-aware time instead of raw server Date
+    const now = getLocalNow();
+    const time = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const day = dayNames[now.getUTCDay()];
+    const todayStr = getLocalDateStr(now);
+    lastSchedulerCheck = new Date().toISOString();
+
+    const settings = loadCurrentSettings();
+    const daySchedule = settings.schedule[day] || [];
+
+    for (const entry of daySchedule) {
+      const strategyName = typeof entry === 'string' ? entry : entry.strategy;
+      const scheduledTime = typeof entry === 'string' ? (settings.scheduler?.defaultTime || '09:00') : entry.time;
+
+      if (time === scheduledTime) {
+        const alreadyDone = queue.some(q =>
+          q.strategy === strategyName && q.createdAt.startsWith(todayStr)
+        );
+        if (alreadyDone) continue;
+
+        addLog('info', `Scheduler: exécution ${strategyName} (${time})`);
+        await executeScheduledStrategy(strategyName, settings);
+      }
+    }
+
+    await processRetryQueue(settings);
+  } finally {
+    schedulerTickRunning = false;
+  }
 }
 
 async function executeScheduledStrategy(strategyName, settings) {
@@ -404,8 +510,7 @@ async function publishQueueItem(item) {
         case 'discord':
           result = await discord.post(content); break;
         case 'telegram':
-          result = await postToChannel(content.text || content, content.imageUrl || item.imageUrl)
-            .then(r => ({ success: !!r?.ok, message: r?.ok ? 'Publié' : 'Échec' })); break;
+          result = await postToChannel(content.text || content, content.imageUrl || item.imageUrl); break;
         case 'twitter':
           result = await twitter.post(typeof content === 'string' ? content : content.text || JSON.stringify(content), item.imageUrl); break;
         case 'reddit':
@@ -437,16 +542,21 @@ async function publishQueueItem(item) {
     item.status = 'partial';
     item.publishedAt = new Date().toISOString();
   } else {
-    item.status = 'failed';
+    // Bug 4 (retry stagnation): increment retryCount BEFORE the comparison so
+    // that after maxRetries failed attempts the item correctly lands in 'failed'.
+    item.retryCount++;
     const settings = loadCurrentSettings();
     const maxRetries = settings.scheduler?.retryMax || 3;
-    if (item.retryCount < maxRetries) {
+    if (item.retryCount <= maxRetries) {
       item.status = 'retry';
       const delays = settings.scheduler?.retryDelays || [5, 30, 60];
-      const delayMin = delays[Math.min(item.retryCount, delays.length - 1)];
+      const delayMin = delays[Math.min(item.retryCount - 1, delays.length - 1)];
       item.nextRetry = new Date(Date.now() + delayMin * 60000).toISOString();
-      item.retryCount++;
       addLog('info', `Retry planifié dans ${delayMin}min (tentative ${item.retryCount}/${maxRetries})`);
+    } else {
+      item.status = 'failed';
+      item.nextRetry = null;
+      addLog('error', `Item ${item.strategy} abandonné après ${maxRetries} tentatives`);
     }
   }
 
@@ -458,40 +568,39 @@ async function publishQueueItem(item) {
 
 async function processRetryQueue(settings) {
   const now = Date.now();
-  const retryItems = queue.filter(q => q.status === 'retry' && q.nextRetry && new Date(q.nextRetry).getTime() <= now);
+  // Bug 4: only pick items that are truly due for retry (not already in publishing)
+  const retryItems = queue.filter(q =>
+    q.status === 'retry' &&
+    q.nextRetry &&
+    new Date(q.nextRetry).getTime() <= now
+  );
 
   for (const item of retryItems) {
+    // Re-check status: a concurrent tick may have already picked it up
+    if (item.status !== 'retry') continue;
     addLog('info', `Retry: ${item.strategy} (tentative ${item.retryCount})`);
+    // Only retry failed platforms, not the ones that already succeeded
     const failedPlatforms = Object.entries(item.results)
-      .filter(([_, r]) => !r.success)
+      .filter(([, r]) => !r.success)
       .map(([p]) => p);
-    item.platforms = failedPlatforms;
+    item.platforms = failedPlatforms.length > 0 ? failedPlatforms : item.platforms;
     item.results = {};
     await publishQueueItem(item);
   }
 }
 
 // ─── Settings Merge (preserve redacted values) ──────────────────
-function isRedacted(val) {
-  if (typeof val !== 'string') return false;
-  return val === '___KEEP___' || val.startsWith('***') || val === '*** (redacted)';
-}
-
+// Merge incoming (from frontend) with existing persisted settings.
+// Secrets are NEVER included: they come from env vars only.
+// Incoming may contain redacted placeholders (***) or be missing secret keys — both are ignored.
 function mergeSettings(existing, incoming) {
   const merged = JSON.parse(JSON.stringify(incoming));
-  // Wallet
-  if (isRedacted(merged.wallet?.privateKey)) {
-    merged.wallet.privateKey = existing.wallet?.privateKey || '';
-  }
-  // Platforms — preserve sensitive fields if redacted
-  if (merged.platforms && existing.platforms) {
-    for (const [name, platCfg] of Object.entries(merged.platforms)) {
-      const ex = existing.platforms[name];
-      if (!ex) continue;
-      for (const [key, val] of Object.entries(platCfg)) {
-        if (isRedacted(val)) {
-          merged.platforms[name][key] = ex[key] || '';
-        }
+  // Remove any secret fields sent by the frontend (should not be sent, but defensive)
+  delete merged.wallet;
+  if (merged.platforms) {
+    for (const platform of Object.values(merged.platforms)) {
+      for (const key of SENSITIVE_PERSIST_KEYS) {
+        delete platform[key];
       }
     }
   }
@@ -661,12 +770,14 @@ async function handleApi(req, res) {
     if (!body || typeof body !== 'object') {
       return json(res, { error: 'Invalid settings object' }, 400);
     }
-    // Merge with existing settings — preserve redacted values
+    // Merge non-sensitive settings only (secrets always come from env)
     const existing = fs.existsSync(SETTINGS_FILE)
       ? JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
       : DEFAULT_SETTINGS;
     const merged = mergeSettings(existing, body);
-    const success = saveSettings(merged);
+    // Re-inject secrets from env for applySettingsToConfig (secrets not persisted)
+    const runtimeMerged = injectSecretsFromEnv(merged);
+    const success = saveSettings(runtimeMerged);
     if (success) {
       addLog('info', 'Settings updated via API');
       return json(res, { success: true });
@@ -677,9 +788,8 @@ async function handleApi(req, res) {
   // GET /api/settings/test/:platform — test platform connection
   if (path.startsWith('/api/settings/test/') && req.method === 'GET') {
     const platform = path.split('/').pop();
-    const settings = fs.existsSync(SETTINGS_FILE)
-      ? JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
-      : DEFAULT_SETTINGS;
+    // Use loadCurrentSettings so secrets are injected from env vars
+    const settings = loadCurrentSettings();
     const cfg = settings.platforms[platform];
 
     if (!cfg) {
@@ -754,8 +864,7 @@ async function handleApi(req, res) {
             results.discord = await discord.post(content);
             break;
           case 'telegram':
-            results.telegram = await postToChannel(content.text || content, content.imageUrl || imageUrl)
-              .then(r => ({ success: !!r?.ok, message: r?.ok ? 'Posted' : 'Failed' }));
+            results.telegram = await postToChannel(content.text || content, content.imageUrl || imageUrl);
             break;
           case 'twitter':
             results.twitter = await twitter.post(typeof content === 'string' ? content : content.text || JSON.stringify(content), imageUrl);
@@ -947,9 +1056,23 @@ async function handleApi(req, res) {
     return; // keep connection open
   }
 
-  // GET /api/logs
+  // GET /api/logs[?level=info|error&limit=N&q=text]
   if (path === '/api/logs' && req.method === 'GET') {
-    return json(res, logs.slice(-50));
+    const levelFilter = url.searchParams.get('level');
+    const limitParam = parseInt(url.searchParams.get('limit') || '100', 10);
+    const query = (url.searchParams.get('q') || '').toLowerCase();
+    let result = logs;
+    if (levelFilter) result = result.filter(l => l.level === levelFilter);
+    if (query) result = result.filter(l => l.msg.toLowerCase().includes(query));
+    return json(res, result.slice(-Math.min(limitParam, 500)));
+  }
+
+  // DELETE /api/logs — clear all logs
+  if (path === '/api/logs' && req.method === 'DELETE') {
+    logs.length = 0;
+    persistLogs();
+    addLog('info', 'Logs effacés par l\'utilisateur');
+    return json(res, { success: true });
   }
 
   // GET /api/history
@@ -1052,6 +1175,7 @@ const server = http.createServer(async (req, res) => {
 
 // Initialize on startup
 ensureDataDir();
+loadLogs(); // Restore persisted logs before any addLog calls
 const currentSettings = loadSettings();
 loadHistory();
 loadQueue();
@@ -1078,6 +1202,7 @@ function gracefulShutdown(signal) {
   saveQueue();
   saveHistory();
   addLog('info', `Agent stopped (${signal})`);
+  persistLogs();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 5000);
 }
