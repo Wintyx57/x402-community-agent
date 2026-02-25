@@ -367,6 +367,13 @@
           <option value="daily-stats">Stats du jour</option>
           <option value="weekly-recap">Recap hebdo</option>
           <option value="new-api">Nouvelle API</option>
+          <option value="provocative-take">Hot Take</option>
+          <option value="tutorial-thread">Tutoriel</option>
+          <option value="milestone-achievement">Milestone</option>
+          <option value="builder-spotlight">Spotlight Provider</option>
+          <option value="ai-agent-usecase">Use Case Agent</option>
+          <option value="competitive-positioning">Comparaison</option>
+          <option value="ecosystem-update">Ecosysteme</option>
         </select>
       </div>
     </div>
@@ -572,7 +579,7 @@ const PLATFORMS = {
   ]},
   hn: { label: 'Hacker News', icon: '&#128992;', color: '#ff6600', fields: [] },
 };
-const STRATEGY_LABELS = { 'daily-stats': 'Stats du jour', 'weekly-recap': 'Recap hebdo', 'new-api': 'Nouvelle API' };
+const STRATEGY_LABELS = { 'daily-stats': 'Stats du jour', 'weekly-recap': 'Recap hebdo', 'new-api': 'Nouvelle API', 'provocative-take': 'Hot Take', 'tutorial-thread': 'Tutoriel', 'milestone-achievement': 'Milestone', 'builder-spotlight': 'Spotlight Provider', 'ai-agent-usecase': 'Use Case Agent', 'competitive-positioning': 'Comparaison', 'ecosystem-update': 'Ecosysteme' };
 const DAYS = { monday: 'Lun', tuesday: 'Mar', wednesday: 'Mer', thursday: 'Jeu', friday: 'Ven', saturday: 'Sam', sunday: 'Dim' };
 const STATUS_LABELS = { awaiting_approval: 'En attente', pending: 'En attente', publishing: 'Publication...', published: 'Publie', partial: 'Partiel', failed: 'Echoue', retry: 'Retry' };
 
@@ -960,7 +967,7 @@ function editScheduleEntry(day, index) {
   const name = typeof entry === 'string' ? entry : entry.strategy;
   const time = typeof entry === 'string' ? '09:00' : entry.time;
 
-  const choice = prompt(`Modifier (ou "supprimer" pour retirer):\nStrategie: daily-stats, weekly-recap, new-api\nFormat: strategie@heure (ex: daily-stats@10:30)`, `${name}@${time}`);
+  const choice = prompt(`Modifier (ou "supprimer" pour retirer):\nStrategies: daily-stats, weekly-recap, new-api, provocative-take, tutorial-thread, milestone-achievement, builder-spotlight, ai-agent-usecase, competitive-positioning, ecosystem-update\nFormat: strategie@heure (ex: daily-stats@10:30)`, `${name}@${time}`);
   if (choice === null) return;
   if (choice.toLowerCase() === 'supprimer' || choice === '') {
     entries.splice(index, 1);
@@ -973,7 +980,7 @@ function editScheduleEntry(day, index) {
 }
 
 function addScheduleEntry(day) {
-  const choice = prompt('Ajouter une strategie:\nFormat: strategie@heure (ex: daily-stats@09:00)', 'daily-stats@09:00');
+  const choice = prompt('Ajouter une strategie:\nStrategies: daily-stats, weekly-recap, new-api, provocative-take, tutorial-thread, milestone-achievement, builder-spotlight, ai-agent-usecase, competitive-positioning, ecosystem-update\nFormat: strategie@heure (ex: provocative-take@14:00)', 'daily-stats@09:00');
   if (!choice) return;
   const [s, t] = choice.split('@');
   if (!settingsCache.schedule[day]) settingsCache.schedule[day] = [];
