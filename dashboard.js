@@ -494,6 +494,22 @@ async function executeScheduledStrategy(strategyName, settings) {
     if (autoPlatforms.length === 0 && manualPlatforms.length === 0) {
       addLog('info', 'Aucune plateforme activée — contenu généré sans publication');
     }
+
+    // Always send copy-paste versions for unconfigured platforms (Twitter, Reddit, HN)
+    // so admin can post manually from Telegram
+    const COPY_PASTE_PLATFORMS = ['twitter', 'reddit', 'hn'];
+    const copyPasteContents = {};
+    for (const p of COPY_PASTE_PLATFORMS) {
+      if (result.contents[p] && !settings.platforms[p]?.enabled) {
+        copyPasteContents[p] = result.contents[p];
+      }
+    }
+    if (Object.keys(copyPasteContents).length > 0) {
+      // Send only the manual copy-paste messages (no preview/approve needed)
+      const { sendCopyPaste } = await import('./lib/platforms/telegram.js');
+      await sendCopyPaste(copyPasteContents).catch(() => {});
+      addLog('info', `Copy-paste envoyé sur Telegram: ${Object.keys(copyPasteContents).join(', ')}`);
+    }
   } catch (e) {
     addLog('error', `Strategy ${strategyName} échouée: ${e.message}`);
   }
