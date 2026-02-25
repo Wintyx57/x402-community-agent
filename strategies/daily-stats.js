@@ -1,4 +1,4 @@
-// Strategy: Daily Stats — Post daily platform statistics to all networks
+// Strategy: Daily Stats — Viral hook first, stats second
 import {
   fetchStats, generateText, generateImage,
   adaptForTwitter, adaptForReddit, adaptForLinkedIn,
@@ -7,59 +7,94 @@ import {
 import { config } from '../config.js';
 
 export const name = 'daily-stats';
-export const description = 'Post daily platform statistics to all configured networks';
+export const description = 'Post daily platform statistics — hook first, viral format';
 
-// Rotating templates for variety
-const TEMPLATES = [
-  (s) => `x402 Bazaar is live with ${s.totalServices} APIs for AI agents. ${s.uptimePercent}% uptime, ${s.recentCalls24h} calls in the last 24h, and ${s.totalPayments} on-chain USDC payments. The first marketplace where agents discover, pay, and use APIs autonomously via the x402 protocol. No subscriptions, no API keys — just crypto-native pay-as-you-go.`,
+// Rotating viral hooks — curiosity/contrarian/surprising angle FIRST
+const HOOKS = [
+  (s) => `Your AI agent just paid for an API call. With crypto. Automatically. No human involved.\n\n` +
+    `That's what's happening on x402 Bazaar right now:\n` +
+    `→ ${s.totalServices} APIs ready for autonomous agents\n` +
+    `→ ${s.recentCalls24h} API calls in the last 24h\n` +
+    `→ ${s.totalPayments} on-chain USDC payments verified\n` +
+    `→ ${s.uptimePercent}% uptime\n\n` +
+    `No subscriptions. No API keys. Just pay-per-call with USDC on Base.`,
 
-  (s) => `${s.totalServices} APIs. ${s.uptimePercent}% uptime. ${s.totalPayments} on-chain payments. x402 Bazaar lets AI agents pay for APIs with USDC — per call, no middleman. Today: ${s.recentCalls24h} API calls processed. The future of autonomous agent commerce is here.`,
+  (s) => `The API economy is changing. Quietly.\n\n` +
+    `AI agents are now buying API access themselves — no credit card, no human approval.\n\n` +
+    `x402 Bazaar today:\n` +
+    `• ${s.totalServices} APIs available\n` +
+    `• ${s.recentCalls24h} autonomous calls processed\n` +
+    `• ${s.totalPayments} on-chain payments, zero chargebacks\n` +
+    `• ${s.uptimePercent}% uptime\n\n` +
+    `HTTP 402 is becoming the payment layer of agentic AI.`,
 
-  (s) => `Your AI agent needs data? x402 Bazaar has ${s.totalServices} APIs ready. Pay per call with USDC on Base — no subscriptions, no credit cards. ${s.recentCalls24h} calls today, ${s.uptimePercent}% uptime, ${s.totalPayments} verified payments on-chain. Built for agents, by agents.`,
+  (s) => `We built a marketplace where AI agents are the customers.\n\n` +
+    `Not devs. Not companies. Agents.\n\n` +
+    `Today's numbers:\n` +
+    `↗ ${s.totalServices} APIs — weather, sentiment, image gen, search...\n` +
+    `↗ ${s.recentCalls24h} calls autonomously made in 24h\n` +
+    `↗ ${s.totalPayments} USDC payments settled on Base\n` +
+    `↗ ${s.uptimePercent}% uptime\n\n` +
+    `x402 Bazaar: the API marketplace agents pay for themselves.`,
 
-  (s) => `Daily stats from x402 Bazaar: ${s.totalServices} APIs live, ${s.uptimePercent}% uptime, ${s.recentCalls24h} calls in 24h. AI agents pay per call with USDC via x402 protocol. 95% revenue share for API creators. The autonomous API economy is growing.`,
+  (s) => `What if your AI agent could buy the tools it needs — mid-task?\n\n` +
+    `x402 Bazaar makes this real. ${s.totalServices} APIs, USDC pay-per-call, zero setup.\n\n` +
+    `Stats right now:\n` +
+    `${s.recentCalls24h} API calls today | ${s.totalPayments} on-chain payments | ${s.uptimePercent}% uptime\n\n` +
+    `Works with Claude MCP, ChatGPT, LangChain, Auto-GPT, CLI.\n` +
+    `Try: npx x402-bazaar init`,
 
-  (s) => `x402 Bazaar update: ${s.totalServices} curated APIs for AI agents. ${s.totalPayments} on-chain USDC payments to date. ${s.recentCalls24h} calls in the last 24h at ${s.uptimePercent}% uptime. No API keys needed — agents pay directly with crypto.`,
+  (s) => `Most APIs still require:\n` +
+    `→ Developer account\n` +
+    `→ Credit card on file\n` +
+    `→ Human reading ToS\n\n` +
+    `x402 Bazaar requires: nothing. Agents pay as they go.\n\n` +
+    `Today: ${s.totalServices} APIs | ${s.recentCalls24h} calls | ${s.uptimePercent}% uptime | ${s.totalPayments} USDC payments`,
 ];
 
 export async function execute() {
   console.log('[daily-stats] Fetching live stats...');
   const stats = await fetchStats();
 
-  // Pick template based on day of month for variety
-  const templateIndex = new Date().getDate() % TEMPLATES.length;
-  const localContent = TEMPLATES[templateIndex](stats);
+  // Rotate hook by day of month for variety
+  const hookIndex = new Date().getDate() % HOOKS.length;
+  const localContent = HOOKS[hookIndex](stats);
 
-  // Try AI-enhanced content, with good local fallback
-  console.log('[daily-stats] Generating content...');
+  console.log('[daily-stats] Generating AI-enhanced content...');
   const mainContent = await generateText(
-    `Write a short, engaging social media post about this API marketplace update. Be concise and enthusiastic but professional. Focus on what makes this unique (AI agents paying for APIs with crypto). Here are the facts: ${localContent}`,
+    `Rewrite this social media post about x402 Bazaar (autonomous AI agent API marketplace). ` +
+    `Keep the hook structure: start with a surprising/contrarian statement, THEN reveal stats. ` +
+    `Tone: confident, builder, slightly provocative. Max 400 chars for Twitter adaptation. ` +
+    `Facts: ${localContent}`,
     400,
     localContent
   );
 
-  // Generate image (optional, needs funded wallet)
   let imageUrl = null;
   if (config.generateImages) {
     console.log('[daily-stats] Generating visual...');
     imageUrl = await generateImage(
-      `Futuristic dashboard showing API marketplace stats: ${stats.totalServices} APIs, ${stats.uptimePercent}% uptime. Neon orange and dark theme. Minimal, tech aesthetic. No text.`
+      `Futuristic tech dashboard, dark background, neon orange glowing stats: "${stats.totalServices} APIs" "${stats.uptimePercent}% uptime". ` +
+      `Minimalist, cyberpunk aesthetic, no people, abstract network nodes. Professional product visual.`
     );
   }
 
-  // Adapt content for each platform
+  const redditDay = new Date().getDay(); // vary subreddit by day
+  const subreddits = ['SideProject', 'artificial', 'webdev', 'MachineLearning', 'cryptocurrency'];
+  const subreddit = subreddits[redditDay % subreddits.length];
+
   const contents = {
     twitter: adaptForTwitter(mainContent, stats),
     linkedin: adaptForLinkedIn(mainContent, stats),
     discord: adaptForDiscord(mainContent, stats, imageUrl),
     telegram: adaptForTelegram(mainContent, stats, imageUrl),
     reddit: {
-      subreddit: 'SideProject',
-      title: `x402 Bazaar: ${stats.totalServices} APIs for AI agents, ${stats.uptimePercent}% uptime`,
+      subreddit,
+      title: `AI agents are paying for APIs autonomously — x402 Bazaar hits ${stats.totalServices} APIs, ${stats.recentCalls24h} calls today`,
       body: mainContent,
     },
     farcaster: adaptForFarcaster(mainContent),
-    hn: { title: `x402 Bazaar \u2013 ${stats.totalServices} APIs for autonomous AI agents (pay-per-call USDC)`, url: config.projectUrl },
+    hn: { title: `x402 Bazaar \u2013 AI agents pay for APIs autonomously with USDC (${stats.totalServices} APIs live)`, url: config.projectUrl },
   };
 
   return { contents, stats, imageUrl };

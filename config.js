@@ -18,7 +18,7 @@ export const config = {
 
   // Content
   defaultLanguage: process.env.DEFAULT_LANGUAGE || 'en',
-  generateImages: process.env.GENERATE_IMAGES !== 'false',
+  generateImages: process.env.GENERATE_IMAGES !== 'false', // default ON — images boost engagement 3x
   projectName: 'x402 Bazaar',
   projectUrl: 'https://x402bazaar.org',
   projectDescription: 'The first autonomous API marketplace for AI agents — pay-per-call with USDC via x402 protocol',
@@ -71,14 +71,33 @@ export const config = {
     },
   },
 
-  // Schedule (day of week → strategies)
+  // Schedule (day of week → strategies with optimal posting times UTC)
+  // Research-backed timings: B2B/tech audiences peak Mon-Fri 9-11h UTC, Wed is king
+  // Reddit: Tue-Thu 10-14h UTC | Twitter: Tue/Wed/Thu 9-12h | LinkedIn: Tue-Thu 8-10h
   schedule: {
+    // Monday: weekly recap early morning — devs check Mondays for news
+    monday: [{ strategy: 'weekly-recap', hour: 9, minute: 0 }],
+    // Tuesday: daily stats + milestone push — highest engagement day
+    tuesday: [{ strategy: 'daily-stats', hour: 10, minute: 0 }],
+    // Wednesday: daily stats — peak LinkedIn + Twitter day
+    wednesday: [{ strategy: 'daily-stats', hour: 9, minute: 30 }],
+    // Thursday: daily stats — strong dev engagement
+    thursday: [{ strategy: 'daily-stats', hour: 10, minute: 0 }],
+    // Friday: light daily stats before weekend
+    friday: [{ strategy: 'daily-stats', hour: 9, minute: 0 }],
+    // Saturday: skip — B2B audience offline
+    saturday: [],
+    // Sunday: skip
+    sunday: [],
+  },
+  // Legacy simple format still supported (array of strings)
+  scheduleLegacy: {
     monday: ['weekly-recap'],
     tuesday: ['daily-stats'],
     wednesday: ['daily-stats'],
     thursday: ['daily-stats'],
     friday: ['daily-stats'],
-    saturday: ['daily-stats'],
+    saturday: [],
     sunday: [],
   },
 
