@@ -48,3 +48,7 @@ services:
         sync: false
       - key: FARCASTER_MNEMONIC
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: TZ_OFFSET
+        value: "2"
