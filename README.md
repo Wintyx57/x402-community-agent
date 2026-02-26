@@ -335,6 +335,19 @@ node server.js & cd ../x402-community-agent && node dashboard.js & wait
 
 See `INTEGRATION-ARCHITECTURE.md` for the full deployment architecture.
 
+## Ecosystem
+
+| Repository | Description |
+|---|---|
+| **[x402-backend](https://github.com/Wintyx57/x402-backend)** | API server, 69 native endpoints, payment middleware, MCP server |
+| **[x402-frontend](https://github.com/Wintyx57/x402-frontend)** | React + TypeScript UI, wallet connect |
+| **[x402-bazaar-cli](https://github.com/Wintyx57/x402-bazaar-cli)** | `npx x402-bazaar` -- CLI with 7 commands |
+| **[x402-sdk](https://github.com/Wintyx57/x402-sdk)** | TypeScript SDK for AI agents |
+| **[x402-langchain](https://github.com/Wintyx57/x402-langchain)** | Python LangChain tools |
+| **[x402-community-agent](https://github.com/Wintyx57/x402-community-agent)** | AI community manager (this repo) |
+
+**Live:** [x402bazaar.org](https://x402bazaar.org) | **API:** [x402-api.onrender.com](https://x402-api.onrender.com)
+
 ## License
 
 MIT
