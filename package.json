@@ -23,5 +23,11 @@
     "node": ">=20.0.0"
   },
   "author": "Robin (Wintyx57)",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Wintyx57/x402-community-agent.git"
+  },
+  "homepage": "https://x402bazaar.org",
+  "keywords": ["x402", "community-agent", "ai-agent", "telegram-bot", "content-automation", "devto", "discord"]
 }

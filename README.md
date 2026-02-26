@@ -56,7 +56,7 @@ x402-community-agent/
 ## Installation
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Wintyx57/x402-community-agent.git
 cd x402-community-agent
 npm install
 ```
