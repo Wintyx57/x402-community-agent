@@ -1,0 +1,173 @@
+{
+  "templates": {
+    "twitter_announcement": {
+      "name": "New API Announcement (Twitter)",
+      "platform": "twitter",
+      "template": "🚀 New API on x402 Bazaar: {api_name}!\n\n{description}\n\nPrice: {price} USDC/call\nUptime: {uptime}%\n\nTry it: {url}\n\n#x402 #AIAgents #APIMarketplace",
+      "max_length": 280,
+      "variables": {
+        "api_name": "string - Name of the API",
+        "description": "string - 1-2 sentence description",
+        "price": "number - Cost per API call in USDC",
+        "uptime": "number - Uptime percentage",
+        "url": "string - Link to API on x402bazaar.org"
+      },
+      "example_output": "🚀 New API on x402 Bazaar: Sentiment Analysis!\n\nAnalyze text sentiment in 50+ languages. Real-time scoring from 0-1.\n\nPrice: 0.01 USDC/call\nUptime: 99.9%\n\nTry it: https://x402bazaar.org/api/sentiment\n\n#x402 #AIAgents #APIMarketplace"
+    },
+    "twitter_milestone": {
+      "name": "Milestone Celebration (Twitter)",
+      "platform": "twitter",
+      "template": "{emoji} Milestone! {count} {metric} on x402 Bazaar!\n\nAll on-chain. All verifiable. {additional_context}\n\n{url}\n\n#x402 #USDC #Base",
+      "max_length": 280,
+      "variables": {
+        "emoji": "string - Celebration emoji",
+        "count": "number - Milestone number",
+        "metric": "string - What was achieved (payments, APIs, calls)",
+        "additional_context": "string - Extra insight or stat",
+        "url": "string - Basescan or x402 URL"
+      },
+      "example_output": "🎉 Milestone! 200 payments on x402 Bazaar!\n\nAll on-chain. All verifiable. Autonomous AI agents are becoming economic actors.\n\nhttps://basescan.org/x402\n\n#x402 #USDC #Base"
+    },
+    "discord_new_api": {
+      "name": "New API Announcement (Discord Embed)",
+      "platform": "discord",
+      "template": {
+        "title": "New API: {api_name}",
+        "description": "{description}",
+        "fields": [
+          {
+            "name": "Price per Call",
+            "value": "{price} USDC",
+            "inline": true
+          },
+          {
+            "name": "Latency (p99)",
+            "value": "{latency}ms",
+            "inline": true
+          },
+          {
+            "name": "Uptime",
+            "value": "{uptime}%",
+            "inline": true
+          },
+          {
+            "name": "Category",
+            "value": "{category}",
+            "inline": true
+          },
+          {
+            "name": "Try It",
+            "value": "[View on x402 Bazaar]({url})"
+          }
+        ],
+        "color": 16756480,
+        "thumbnail": {
+          "url": "{icon_url}"
+        }
+      },
+      "variables": {
+        "api_name": "string - API name",
+        "description": "string - What it does",
+        "price": "number - USDC per call",
+        "latency": "number - Response time",
+        "uptime": "number - Uptime %",
+        "category": "string - Category (data, compute, analytics, etc)",
+        "url": "string - Link to x402",
+        "icon_url": "string - Icon/logo URL"
+      }
+    },
+    "linkedin_weekly": {
+      "name": "Weekly Recap (LinkedIn)",
+      "platform": "linkedin",
+      "template": "This week on x402 Bazaar:\n\n→ {stat1}\n→ {stat2}\n→ {stat3}\n\nWhat changed? {insight}\n\nWe're building the autonomous agent economy, one API at a time.\n\n#AIAgents #Web3 #APIEconomy #Innovation",
+      "max_length": 1200,
+      "variables": {
+        "stat1": "string - First stat with number",
+        "stat2": "string - Second stat",
+        "stat3": "string - Third stat",
+        "insight": "string - Key takeaway or trend"
+      },
+      "example_output": "This week on x402 Bazaar:\n\n→ 12 new API calls from autonomous agents\n→ 2 external developers registered APIs\n→ $0.47 USDC earned by builders\n\nWhat changed? Agents are becoming picky about latency. They're routing away from slow providers even if cheaper.\n\nWe're building the autonomous agent economy, one API at a time.\n\n#AIAgents #Web3 #APIEconomy #Innovation"
+    },
+    "reddit_new_api": {
+      "name": "New API Announcement (Reddit)",
+      "platform": "reddit",
+      "template": "# Just Added: {api_name}\n\n## What it does\n\n{description}\n\n## Why you might use it\n\n{use_case1}\n\n{use_case2}\n\n## Numbers\n\n- **Price**: {price} USDC per call\n- **Latency**: {latency}ms (p99)\n- **Uptime**: {uptime}%\n- **Built by**: {provider}\n\n## Try it\n\n```\nnpx x402-bazaar call {api_id} [params]\n```\n\nOr use the marketplace: https://x402bazaar.org/api/{api_id}\n\nQuestions? Ask away!",
+      "max_length": 800,
+      "variables": {
+        "api_name": "string - API name",
+        "description": "string - What it does (markdown formatted)",
+        "use_case1": "string - Use case 1",
+        "use_case2": "string - Use case 2",
+        "price": "number - USDC per call",
+        "latency": "number - p99 latency",
+        "uptime": "number - Uptime %",
+        "provider": "string - Who built it",
+        "api_id": "string - API ID for CLI"
+      }
+    },
+    "telegram_daily": {
+      "name": "Daily Stats (Telegram)",
+      "platform": "telegram",
+      "template": "*x402 Bazaar Daily Update*\n\n📊 Today's Stats:\n• {calls_24h} API calls\n• {payments_24h} USDC processed\n• {apis_online} APIs online\n• {uptime}% uptime\n\n{highlight}\n\n[View Marketplace](https://x402bazaar.org)",
+      "max_length": 400,
+      "variables": {
+        "calls_24h": "number - API calls in last 24h",
+        "payments_24h": "number - USDC paid in last 24h",
+        "apis_online": "number - APIs currently online",
+        "uptime": "number - Current uptime %",
+        "highlight": "string - Interesting fact or milestone from today"
+      },
+      "example_output": "*x402 Bazaar Daily Update*\n\n📊 Today's Stats:\n• 47 API calls\n• 0.89 USDC processed\n• 74 APIs online\n• 99.9% uptime\n\n🔥 Highlight: First agent from Paris discovered the sentiment analysis API!\n\n[View Marketplace](https://x402bazaar.org)"
+    },
+    "farcaster_cast": {
+      "name": "Short Cast (Farcaster)",
+      "platform": "farcaster",
+      "template": "{hook}\n\n{body}\n\n{cta}\n\n{url}",
+      "max_length": 320,
+      "variables": {
+        "hook": "string - Attention-grabbing opening",
+        "body": "string - Main message",
+        "cta": "string - Call to action",
+        "url": "string - Link"
+      },
+      "example_output": "Your AI agent just paid for an API call. Autonomously.\n\nThat's what's happening on x402 Bazaar right now: 74 APIs, 164 payments, USDC on Base.\n\nTry it:\nhttps://x402bazaar.org"
+    },
+    "hn_show_hn": {
+      "name": "Show HN Title & First Comment",
+      "platform": "hackernews",
+      "template": {
+        "title": "Show HN: x402 Bazaar – {tagline}",
+        "first_comment": "{opening}\n\n{technical_details}\n\n{stats}\n\n{call_to_action}"
+      },
+      "variables": {
+        "tagline": "string - 2-5 word description",
+        "opening": "string - Problem statement",
+        "technical_details": "string - How it works (2-3 paragraphs)",
+        "stats": "string - Real numbers proving traction",
+        "call_to_action": "string - What you want readers to do"
+      },
+      "example_output": {
+        "title": "Show HN: x402 Bazaar – AI agents pay for APIs with USDC",
+        "first_comment": "I've been working on this for 3 months. The core insight: AI agents should be able to pay for external APIs themselves, without human intervention.\n\nHow it works: The x402 protocol uses HTTP 402 (Payment Required) status code. When an agent calls an API, the server responds with payment instructions. The agent signs a USDC transfer on Base blockchain. The server verifies on-chain, then executes and returns the result.\n\nReal numbers: 74 APIs live, 164 payments processed, 5 external providers registered, 19 USDC earned by builders, 99.9% uptime. All on-chain, all verifiable.\n\nTry it: https://x402bazaar.org or npx x402-bazaar init\n\nHappy to discuss the technical trade-offs, regulatory questions, or architectural decisions."
+      }
+    }
+  },
+  "metadata": {
+    "total_templates": 8,
+    "platforms": [
+      "twitter",
+      "discord",
+      "linkedin",
+      "reddit",
+      "telegram",
+      "farcaster",
+      "hackernews"
+    ],
+    "usage_guide": "Each template has {variable} placeholders. Replace with actual values. Format is platform-specific (Markdown for Reddit/Discord, Telegram markdown, etc). Always include CTAs and links.",
+    "color_codes": {
+      "discord_embed_color": 16756480,
+      "brand_color": "#FF6B2C"
+    }
+  }
+}

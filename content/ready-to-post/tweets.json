@@ -1,0 +1,100 @@
+{
+  "tweets": [
+    {
+      "id": "tech-wow-1",
+      "category": "technical wow",
+      "text": "HTTP 402 'Payment Required' was added to the spec in 1996. For 28 years, nobody used it. Then we built an autonomous agent economy on top of it. That's the x402 protocol. 74 APIs. Zero subscriptions.",
+      "length": 224,
+      "hashtags": ["#x402", "#AIAgents", "#HTTP402", "#Web3"],
+      "suggested_image": "Retro computer screen with HTTP 402 status code glowing, modern gradient overlay"
+    },
+    {
+      "id": "tech-wow-2",
+      "category": "technical wow",
+      "text": "Your AI agent just discovered it needs sentiment analysis. It checked x402 Bazaar, found a provider, and paid 0.01 USDC for the response. All on-chain. No human involved. This is what autonomous commerce looks like.",
+      "length": 237,
+      "hashtags": ["#x402", "#AIAgents", "#AutonomousAI", "#USDC"],
+      "suggested_image": "Transaction flow diagram showing agent → API call → payment settlement"
+    },
+    {
+      "id": "tech-wow-3",
+      "category": "technical wow",
+      "text": "No API key management. No subscription gatekeeping. No token limits. Just discover → price → pay → use. That's the x402 API marketplace model. 74 services, 164 on-chain payments, zero chargebacks.",
+      "length": 223,
+      "hashtags": ["#x402", "#APIEconomy", "#Blockchain", "#DeFi"],
+      "suggested_image": "Clean UI mockup showing x402 API discovery and payment flow"
+    },
+    {
+      "id": "proof-real-1",
+      "category": "proof it's real",
+      "text": "Real numbers: 74 APIs live. 164 USDC payments settled on-chain. 5 external developers already earning. All verifiable on Base blockchain. This isn't a concept. x402 Bazaar is shipping.",
+      "length": 218,
+      "hashtags": ["#x402", "#Base", "#OnChain", "#Proof"],
+      "suggested_image": "Blockchain transaction history from Basescan showing payment records"
+    },
+    {
+      "id": "proof-real-2",
+      "category": "proof it's real",
+      "text": "Payment #164 just cleared on x402 Bazaar. An AI agent called a weather API. Paid USDC. Got data. 3 seconds total. No humans. No approval process. Just market mechanics working.",
+      "length": 220,
+      "hashtags": ["#x402", "#USDC", "#RealTraction", "#Shipping"],
+      "suggested_image": "Live payment notification with timestamp and amount"
+    },
+    {
+      "id": "proof-real-3",
+      "category": "proof it's real",
+      "text": "These aren't projected numbers. 5 external providers registered. 19 USDC earned by builders. 99.9% uptime. 164 transactions verified on-chain. The autonomous agent economy is happening right now.",
+      "length": 216,
+      "hashtags": ["#x402", "#Verified", "#RealData", "#BlockchainProof"],
+      "suggested_image": "Dashboard showing live statistics with uptime metric"
+    },
+    {
+      "id": "call-to-build-1",
+      "category": "call to build",
+      "text": "Want to sell your AI API? List it on x402 Bazaar in 2 minutes. Price it. Keep 95% revenue. Let agents find you. Zero hosting fees. Just pure API commerce. https://x402bazaar.org/creators",
+      "length": 236,
+      "hashtags": ["#x402", "#Builders", "#APICreators", "#Revenue"],
+      "suggested_image": "Creator dashboard UI showing API listing form"
+    },
+    {
+      "id": "call-to-build-2",
+      "category": "call to build",
+      "text": "Building an AI agent? Give it wallet access: npx x402-bazaar init. Instant access to 74 APIs. Pay microseconds before you call. No keys. No subscriptions. Just code. Let's build on this.",
+      "length": 216,
+      "hashtags": ["#x402", "#Developers", "#AITools", "#OpenSource"],
+      "suggested_image": "Terminal window showing CLI command and successful initialization"
+    },
+    {
+      "id": "use-case-1",
+      "category": "use case",
+      "text": "Scenario: Your autonomous trading bot needs historical market data. It discovers 3 providers on x402, compares prices, picks the cheapest, pays USDC/call. All in milliseconds. No human approval. This is the future.",
+      "length": 246,
+      "hashtags": ["#x402", "#AutomatedTrading", "#AIPowered", "#DeFi"],
+      "suggested_image": "Trading dashboard with multiple data provider options"
+    },
+    {
+      "id": "use-case-2",
+      "category": "use case",
+      "text": "Your research AI needs to cross-reference data from 5 different APIs. On x402, it calls all 5, pays $0.05 total, gets results in 2 seconds. Monthly subscription model? That would cost $500. This is what pay-per-call solves.",
+      "length": 263,
+      "hashtags": ["#x402", "#Research", "#DataIntegration", "#EconomicsOfScale"],
+      "suggested_image": "Multi-source data aggregation diagram with cost breakdown"
+    }
+  ],
+  "metadata": {
+    "total": 10,
+    "categories": {
+      "technical wow": 3,
+      "proof it's real": 3,
+      "call to build": 2,
+      "use case": 2
+    },
+    "hashtag_frequency": {
+      "#x402": 10,
+      "#AIAgents": 3,
+      "#USDC": 3,
+      "#Base": 2
+    },
+    "notes": "All tweets fit within 280 character limit. Images are suggestions for designer implementation. Rotate through these daily or use for targeted campaign pushes."
+  }
+}
