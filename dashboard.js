@@ -13,6 +13,7 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '.env') });
 
 import { config } from './config.js';
+import { validateAndExit } from './src/validate-env.js';
 import { getSpending } from './lib/x402-client.js';
 import { fetchStats, generateText, generateImage, adaptForTwitter, adaptForLinkedIn, adaptForDiscord, adaptForTelegram, adaptForFarcaster, adaptForHN, adaptForReddit, adaptForDevTo } from './lib/content-gen.js';
 import { sendPreview, sendImage, postToChannel, sendReport } from './lib/platforms/telegram.js';
@@ -1203,6 +1204,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 // Initialize on startup
+// Validate environment variables before starting server
+validateAndExit();
+
 ensureDataDir();
 loadLogs(); // Restore persisted logs before any addLog calls
 const currentSettings = loadSettings();

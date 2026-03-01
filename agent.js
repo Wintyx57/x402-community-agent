@@ -10,6 +10,7 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '.env') });
 
 import { config } from './config.js';
+import { validateAndExit } from './src/validate-env.js';
 import { getSpending, getBalance } from './lib/x402-client.js';
 import { sendPreview, sendImage, waitForApproval, postToChannel, sendReport } from './lib/platforms/telegram.js';
 import * as discord from './lib/platforms/discord.js';
@@ -83,6 +84,9 @@ async function publishAll(contents, imageUrl) {
 
 // ─── Main ─────────────────────────────────────────────────────────
 async function main() {
+  // Validate environment variables before any strategy execution
+  validateAndExit();
+
   const args = process.argv.slice(2);
   const strategyFlag = args.find((_, i) => args[i - 1] === '--strategy') || 'daily-stats';
   const previewOnly = args.includes('--preview');
