@@ -90,17 +90,6 @@ export const config = {
     // Sunday: skip
     sunday: [],
   },
-  // Legacy simple format still supported (array of strings)
-  scheduleLegacy: {
-    monday: ['weekly-recap'],
-    tuesday: ['daily-stats'],
-    wednesday: ['daily-stats'],
-    thursday: ['daily-stats'],
-    friday: ['daily-stats'],
-    saturday: [],
-    sunday: [],
-  },
-
   // Platform-specific content limits
   limits: {
     twitter: { maxChars: 280, maxImages: 4 },

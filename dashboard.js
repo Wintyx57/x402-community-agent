@@ -459,7 +459,17 @@ async function schedulerTick() {
   }
 }
 
+const ALLOWED_STRATEGIES = new Set([
+  'daily-stats', 'weekly-recap', 'new-api', 'milestone', 'ai-agent-usecase',
+  'provider-spotlight', 'builder-spotlight', 'competitive-positioning',
+  'ecosystem-update', 'milestone-achievement', 'provocative-take', 'tutorial-thread'
+]);
+
 async function executeScheduledStrategy(strategyName, settings) {
+  if (!ALLOWED_STRATEGIES.has(strategyName)) {
+    addLog('error', `Strategy non autorisée: ${strategyName}`);
+    return;
+  }
   try {
     const mod = await import(`./strategies/${strategyName}.js`);
     const result = await mod.execute({});
@@ -758,6 +768,16 @@ async function handleApi(req, res) {
   const url = new URL(req.url, `http://localhost:${PORT}`);
   const path = url.pathname;
 
+  // Auth check — skip pour /api/health et /api/status (monitoring)
+  const EXEMPT_PATHS = ['/api/health', '/api/status'];
+  const AGENT_TOKEN = process.env.AGENT_ADMIN_TOKEN || process.env.ADMIN_TOKEN;
+  if (AGENT_TOKEN && !EXEMPT_PATHS.includes(path)) {
+    const token = req.headers['x-admin-token'] || req.headers['authorization']?.replace('Bearer ', '');
+    if (token !== AGENT_TOKEN) {
+      return json(res, { error: 'Unauthorized' }, 401);
+    }
+  }
+
   // GET /api/status — platform status + budget
   if (path === '/api/status' && req.method === 'GET') {
     // Read platform enabled status from process.env at request time (not module load time)
@@ -871,6 +891,9 @@ async function handleApi(req, res) {
   if (path === '/api/preview' && req.method === 'POST') {
     const body = await readBody(req);
     const strategy = body.strategy || 'daily-stats';
+    if (!ALLOWED_STRATEGIES.has(strategy)) {
+      return json(res, { error: 'Unknown strategy', allowed: [...ALLOWED_STRATEGIES] }, 400);
+    }
     addLog('info', `Generating preview for strategy: ${strategy}`);
     try {
       const mod = await import(`./strategies/${strategy}.js`);
@@ -1078,7 +1101,7 @@ async function handleApi(req, res) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'X-Accel-Buffering': 'no',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     });
     // Send last 20 logs as initial snapshot
     res.write(`event: snapshot\ndata: ${JSON.stringify(logs.slice(-20))}\n\n`);
@@ -1179,8 +1202,10 @@ function serveStatic(req, res) {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
+const ALLOWED_ORIGIN = process.env.CORS_ORIGIN || '*';
+
 function json(res, data, status = 200) {
-  res.writeHead(status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+  res.writeHead(status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': ALLOWED_ORIGIN });
   res.end(JSON.stringify(data));
 }
 
@@ -1198,7 +1223,7 @@ const server = http.createServer(async (req, res) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
       'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type,X-Admin-Token,Authorization',
     });
