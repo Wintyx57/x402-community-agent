@@ -760,10 +760,17 @@ async function handleApi(req, res) {
 
   // GET /api/status — platform status + budget
   if (path === '/api/status' && req.method === 'GET') {
-    const platforms = {};
-    for (const [name, cfg] of Object.entries(config.platforms)) {
-      platforms[name] = { enabled: cfg.enabled };
-    }
+    // Read platform enabled status from process.env at request time (not module load time)
+    const platforms = {
+      telegram: { enabled: !!process.env.TELEGRAM_BOT_TOKEN },
+      discord: { enabled: !!process.env.DISCORD_WEBHOOK_URL },
+      twitter: { enabled: !!process.env.TWITTER_API_KEY },
+      reddit: { enabled: !!process.env.REDDIT_CLIENT_ID },
+      devto: { enabled: !!process.env.DEVTO_API_KEY },
+      linkedin: { enabled: !!process.env.LINKEDIN_ACCESS_TOKEN },
+      farcaster: { enabled: !!process.env.FARCASTER_SIGNER_KEY },
+      hn: { enabled: false },
+    };
     const spending = getSpending();
     return json(res, {
       platforms,
@@ -785,12 +792,13 @@ async function handleApi(req, res) {
     } catch (e) { return json(res, { error: e.message }, 500); }
   }
 
-  // GET /api/settings — read settings
+  // GET /api/settings — read settings (inject secrets from env before sanitizing)
   if (path === '/api/settings' && req.method === 'GET') {
     const settings = fs.existsSync(SETTINGS_FILE)
       ? JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
       : DEFAULT_SETTINGS;
-    const safe = sanitizeConfigForFrontend(settings);
+    const runtime = injectSecretsFromEnv(settings);
+    const safe = sanitizeConfigForFrontend(runtime);
     return json(res, safe);
   }
 
