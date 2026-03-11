@@ -108,7 +108,7 @@ node agent.js --strategy daily-stats --skip-approval
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `AGENT_PRIVATE_KEY` | Yes (for paid APIs) | -- | Private key for the Base wallet (USDC payments) |
+| `AGENT_PRIVATE_KEY` | Yes (for paid APIs) | -- | Private key for the Base wallet (USDC payments). [Fund wallet](https://x402bazaar.org/fund) |
 | `MAX_BUDGET_USDC` | No | `0.50` | Maximum USDC spend per session |
 | `X402_SERVER_URL` | No | `https://x402-api.onrender.com` | x402 Bazaar API base URL |
 | `DASHBOARD_PORT` | No | `3500` | HTTP server port |
